@@ -783,10 +783,19 @@ function AccountingSync({ docs }) {
 }
 
 function UserManagement({ members, setMembers, company }) {
+  const [selectedId, setSelectedId] = useState(members[0]?.id || null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("Staff");
+
+  useEffect(() => {
+    if (!members.some(member => member.id === selectedId)) {
+      setSelectedId(members[0]?.id || null);
+    }
+  }, [members, selectedId]);
+
+  const selectedMember = members.find(member => member.id === selectedId) || members[0] || null;
 
   const updateMember = (id, patch) => {
     setMembers(current => current.map(member => member.id === id ? { ...member, ...patch } : member));
@@ -843,40 +852,67 @@ function UserManagement({ members, setMembers, company }) {
     };
 
     setMembers(current => [newMember, ...current]);
+    setSelectedId(newMember.id);
     setInviteOpen(false);
     setInviteName("");
     setInviteEmail("");
     setInviteRole("Staff");
   };
 
+  const roleDefaults = selectedMember ? ROLE_DEFAULTS[selectedMember.role] || {} : {};
+
   return (
     <div style={{ padding: "28px 32px", maxWidth: 1180 }}>
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>User management</div>
-          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Manage members for {company.name} and configure role defaults, permissions and notifications.</div>
+          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Select a member to view and edit permissions, or invite a new one.</div>
         </div>
         <button onClick={() => setInviteOpen(true)} style={{ padding: "12px 18px", background: "#1a6fbd", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
           + Invite new member
         </button>
       </div>
 
-      <div style={{ display: "grid", gap: 16 }}>
-        {members.map(member => {
-          const roleDefaults = ROLE_DEFAULTS[member.role] || {};
-          return (
-            <div key={member.id} style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, padding: 20 }}>
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16, marginBottom: 18, alignItems: "center" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+        <div style={{ flex: "0 0 320px", minWidth: 280, maxWidth: 320, background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "18px 20px", borderBottom: "1px solid #f0f0f5", fontWeight: 700, color: "#111827" }}>All members</div>
+          {members.map(member => (
+            <button key={member.id} onClick={() => setSelectedId(member.id)} style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "14px 16px",
+              background: selectedMember?.id === member.id ? "#eff6ff" : "transparent",
+              border: "none",
+              textAlign: "left",
+              cursor: "pointer",
+            }}>
+              <Avatar name={member.name} color="#7c3aed" size={38} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{member.name}</div>
+                <div style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{member.email}</div>
+              </div>
+              <span style={{ marginLeft: "auto", fontSize: 11, color: "#374151", background: "#f3f4f6", borderRadius: 999, padding: "5px 10px" }}>{member.role}</span>
+            </button>
+          ))}
+          {members.length === 0 && <div style={{ padding: 20, color: "#6b7280" }}>No members yet.</div>}
+        </div>
+
+        <div style={{ flex: "1 1 580px", minWidth: 320, background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, padding: 20 }}>
+          {selectedMember ? (
+            <>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16, marginBottom: 20, alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-                  <Avatar name={member.name} color="#7c3aed" size={48} />
+                  <Avatar name={selectedMember.name} color="#7c3aed" size={52} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{member.name}</div>
-                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.email}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{selectedMember.name}</div>
+                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>{selectedMember.email}</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 180 }}>
                   <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Role</label>
-                  <select value={member.role} onChange={e => handleRoleChange(member.id, e.target.value)} style={{ flex: 1, minWidth: 140, padding: "10px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827", fontSize: 13, cursor: "pointer" }}>
+                  <select value={selectedMember.role} onChange={e => handleRoleChange(selectedMember.id, e.target.value)} style={{ flex: 1, minWidth: 140, padding: "10px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827", fontSize: 13, cursor: "pointer" }}>
                     {Object.keys(ROLE_DEFAULTS).map(role => (
                       <option key={role} value={role}>{role}</option>
                     ))}
@@ -892,14 +928,13 @@ function UserManagement({ members, setMembers, company }) {
                       <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>Role defaults are shown with a lock icon, custom toggles remain editable.</div>
                     </div>
                     <div style={{ fontSize: 12, color: "#6b7280", padding: "6px 10px", borderRadius: 999, background: "#f3f4f6" }}>
-                      {member.role} defaults
+                      {selectedMember.role} defaults
                     </div>
                   </div>
                   <div style={{ display: "grid", gap: 10 }}>
                     {USER_PERMISSIONS.map(perm => {
                       const base = !!roleDefaults[perm.key];
-                      const active = !!member.permissions[perm.key];
-                      const isCustom = active !== base;
+                      const active = !!selectedMember.permissions[perm.key];
                       return (
                         <div key={perm.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 12, borderRadius: 12, background: "#f9fafb" }}>
                           <div style={{ minWidth: 0 }}>
@@ -907,11 +942,11 @@ function UserManagement({ members, setMembers, company }) {
                               {perm.label}
                               {base && <span style={{ color: "#6b7280", fontSize: 12 }}>🔒</span>}
                             </div>
-                            <div style={{ fontSize: 11, color: isCustom ? "#1a6fbd" : "#6b7280" }}>
+                            <div style={{ fontSize: 11, color: active === base ? "#6b7280" : "#1a6fbd" }}>
                               {base ? "Role default" : active ? "Custom enabled" : "Custom off"}
                             </div>
                           </div>
-                          <button onClick={() => togglePermission(member.id, perm.key)} style={{ width: 56, height: 28, borderRadius: 999, border: "none", background: active ? "#1a6fbd" : "#e5e7eb", color: active ? "#fff" : "#6b7280", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+                          <button onClick={() => togglePermission(selectedMember.id, perm.key)} style={{ width: 56, height: 28, borderRadius: 999, border: "none", background: active ? "#1a6fbd" : "#e5e7eb", color: active ? "#fff" : "#6b7280", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
                             {active ? "On" : "Off"}
                           </button>
                         </div>
@@ -927,14 +962,14 @@ function UserManagement({ members, setMembers, company }) {
                   </div>
                   <div style={{ display: "grid", gap: 10 }}>
                     {NOTIFICATION_CHANNELS.map(note => {
-                      const active = !!member.notifications[note.key];
+                      const active = !!selectedMember.notifications[note.key];
                       return (
                         <div key={note.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 12, borderRadius: 12, background: "#f9fafb" }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{note.label}</div>
                             <div style={{ fontSize: 11, color: "#6b7280" }}>{active ? "Subscribed" : "Muted"}</div>
                           </div>
-                          <button onClick={() => toggleNotification(member.id, note.key)} style={{ width: 56, height: 28, borderRadius: 999, border: "none", background: active ? "#1a6fbd" : "#e5e7eb", color: active ? "#fff" : "#6b7280", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+                          <button onClick={() => toggleNotification(selectedMember.id, note.key)} style={{ width: 56, height: 28, borderRadius: 999, border: "none", background: active ? "#1a6fbd" : "#e5e7eb", color: active ? "#fff" : "#6b7280", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
                             {active ? "On" : "Off"}
                           </button>
                         </div>
@@ -943,9 +978,13 @@ function UserManagement({ members, setMembers, company }) {
                   </div>
                 </div>
               </div>
+            </>
+          ) : (
+            <div style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
+              Select a member to view and edit their permissions.
             </div>
-          );
-        })}
+          )}
+        </div>
       </div>
 
       {inviteOpen && (
@@ -1137,10 +1176,10 @@ const NAV = [
   { key:"documents",  label:"Documents",     icon:"📁" },
   { key:"upload",     label:"Upload",         icon:"⬆️" },
   { key:"approvals",  label:"Approvals",     icon:"✅" },
+  { key:"users",      label:"Users",         icon:"👥" },
   { key:"finance",    label:"Finance",        icon:"🏦" },
   { key:"accounting", label:"Acct sync",     icon:"🔄" },
   { key:"settings",   label:"Settings",      icon:"⚙️" },
-  { key:"users",      label:"Users",         icon:"👥" },
   { key:"pricing",    label:"Pricing",       icon:"💳" },
 ];
 
@@ -1202,7 +1241,7 @@ export default function App() {
           {NAV.map(n => (
             <div key={n.key} onClick={() => setScreen(n.key)}
               style={{
-                display:"inline-flex", alignItems:"center", gap:10, padding:"9px 12px",
+                display: isMobile ? "inline-flex" : "flex", width: isMobile ? undefined : "100%", alignItems:"center", gap:10, padding:"9px 12px",
                 borderRadius:9, cursor:"pointer", marginBottom:isMobile ? 0 : 2,
                 background: screen===n.key ? "#eff6ff" : "transparent",
                 color: screen===n.key ? "#1a6fbd" : "#374151",
