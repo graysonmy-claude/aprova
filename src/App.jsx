@@ -8,26 +8,32 @@ const COMPANIES = [
 ];
 
 const ACCOUNT_CODES = [
-  { code: "2100", label: "Accounts payable",           type: "supplier" },
-  { code: "2110", label: "Creditor adjustments",       type: "supplier" },
-  { code: "5100", label: "Purchases – general",        type: "supplier" },
-  { code: "6210", label: "Transport / petrol",         type: "claim"    },
-  { code: "6220", label: "Medical expenses",           type: "claim"    },
-  { code: "6230", label: "Telephone & utilities",      type: "claim"    },
-  { code: "6240", label: "Entertainment expenses",     type: "claim"    },
+  // Creditor codes (400-XXX) - Supplier accounts
+  { code: "400-M001", label: "Meta Solutions Sdn Bhd", type: "supplier", category: "creditor" },
+  { code: "400-P001", label: "Pemasok Berjaya Sdn Bhd", type: "supplier", category: "creditor" },
+  { code: "400-T001", label: "Teknologi Utama Sdn Bhd", type: "supplier", category: "creditor" },
+  { code: "400-B001", label: "Bekalan Maju Enterprise", type: "supplier", category: "creditor" },
+  { code: "400-G001", label: "Global Supply Sdn Bhd", type: "supplier", category: "creditor" },
+  // Expense codes (900-XXX) - Claim accounts
+  { code: "900-A001", label: "Audit Fee", type: "claim", category: "expense" },
+  { code: "900-M001", label: "Medical Fee", type: "claim", category: "expense" },
+  { code: "900-P001", label: "Petrol & Transport", type: "claim", category: "expense" },
+  { code: "900-T001", label: "Telephone & Utilities", type: "claim", category: "expense" },
+  { code: "900-E001", label: "Entertainment", type: "claim", category: "expense" },
+  { code: "900-R001", label: "Rental", type: "claim", category: "expense" },
 ];
 
 const INITIAL_DOCS = [
-  { id:1,  type:"supplier", subtype:"Invoice",     ref:"INV-2024-0892", party:"Pemasok Berjaya Sdn Bhd",    amount:12500, code:"5100", status:"pending",  date:"2024-10-18", uploader:"Ahmad Razak",   notes:"" },
-  { id:2,  type:"claim",    subtype:"Petrol",      ref:"CLM-0041",      party:"Ahmad bin Razak",            amount:320,   code:"6210", status:"approved",  date:"2024-10-17", uploader:"Ahmad Razak",   notes:"Penang trip" },
-  { id:3,  type:"supplier", subtype:"Credit Note", ref:"CN-2024-0034",  party:"Teknologi Utama Sdn Bhd",   amount:1800,  code:"2110", status:"review",    date:"2024-10-16", uploader:"Siti Noor",     notes:"" },
-  { id:4,  type:"claim",    subtype:"Medical",     ref:"CLM-0040",      party:"Siti Noor bt Azman",        amount:180,   code:"6220", status:"synced",    date:"2024-10-15", uploader:"Siti Noor",     notes:"Panel clinic" },
-  { id:5,  type:"supplier", subtype:"Invoice",     ref:"INV-2024-0889", party:"Bekalan Maju Enterprise",   amount:6750,  code:"5100", status:"rejected",  date:"2024-10-14", uploader:"Lim Wei",       notes:"Wrong GST" },
-  { id:6,  type:"claim",    subtype:"Entertainment",ref:"CLM-0039",     party:"Lim Wei Shen",              amount:850,   code:"6240", status:"pending",   date:"2024-10-13", uploader:"Lim Wei",       notes:"Client dinner" },
-  { id:7,  type:"supplier", subtype:"Invoice",     ref:"INV-2024-0901", party:"Global Supply Sdn Bhd",    amount:22000, code:"5100", status:"approved",  date:"2024-10-19", uploader:"Ahmad Razak",   notes:"" },
-  { id:8,  type:"claim",    subtype:"Telephone",   ref:"CLM-0042",      party:"Nurul Ain bt Hashim",       amount:150,   code:"6230", status:"pending",   date:"2024-10-19", uploader:"Nurul Ain",     notes:"Oct bill" },
-  { id:9,  type:"supplier", subtype:"Debit Note",  ref:"DN-2024-0012",  party:"Pemasok Berjaya Sdn Bhd",  amount:430,   code:"2110", status:"review",    date:"2024-10-18", uploader:"Lim Wei",       notes:"" },
-  { id:10, type:"claim",    subtype:"Medical",     ref:"CLM-0043",      party:"Faizal bin Omar",           amount:240,   code:"6220", status:"approved",  date:"2024-10-20", uploader:"Faizal Omar",   notes:"Hospital KL" },
+  { id:1,  type:"supplier", subtype:"Invoice",     ref:"INV-2024-0892", party:"Pemasok Berjaya Sdn Bhd",    amount:12500, code:"400-P001", status:"pending",  date:"2024-10-18", uploader:"Ahmad Razak",   notes:"" },
+  { id:2,  type:"claim",    subtype:"Petrol",      ref:"CLM-0041",      party:"Ahmad bin Razak",            amount:320,   code:"900-P001", status:"approved",  date:"2024-10-17", uploader:"Ahmad Razak",   notes:"Penang trip" },
+  { id:3,  type:"supplier", subtype:"Credit Note", ref:"CN-2024-0034",  party:"Teknologi Utama Sdn Bhd",   amount:1800,  code:"400-T001", status:"review",    date:"2024-10-16", uploader:"Siti Noor",     notes:"" },
+  { id:4,  type:"claim",    subtype:"Medical",     ref:"CLM-0040",      party:"Siti Noor bt Azman",        amount:180,   code:"900-M001", status:"synced",    date:"2024-10-15", uploader:"Siti Noor",     notes:"Panel clinic" },
+  { id:5,  type:"supplier", subtype:"Invoice",     ref:"INV-2024-0889", party:"Bekalan Maju Enterprise",   amount:6750,  code:"400-B001", status:"rejected",  date:"2024-10-14", uploader:"Lim Wei",       notes:"Wrong GST" },
+  { id:6,  type:"claim",    subtype:"Entertainment",ref:"CLM-0039",     party:"Lim Wei Shen",              amount:850,   code:"900-E001", status:"pending",   date:"2024-10-13", uploader:"Lim Wei",       notes:"Client dinner" },
+  { id:7,  type:"supplier", subtype:"Invoice",     ref:"INV-2024-0901", party:"Global Supply Sdn Bhd",    amount:22000, code:"400-G001", status:"approved",  date:"2024-10-19", uploader:"Ahmad Razak",   notes:"" },
+  { id:8,  type:"claim",    subtype:"Telephone",   ref:"CLM-0042",      party:"Nurul Ain bt Hashim",       amount:150,   code:"900-T001", status:"pending",   date:"2024-10-19", uploader:"Nurul Ain",     notes:"Oct bill" },
+  { id:9,  type:"supplier", subtype:"Debit Note",  ref:"DN-2024-0012",  party:"Pemasok Berjaya Sdn Bhd",  amount:430,   code:"400-P001", status:"review",    date:"2024-10-18", uploader:"Lim Wei",       notes:"" },
+  { id:10, type:"claim",    subtype:"Medical",     ref:"CLM-0043",      party:"Faizal bin Omar",           amount:240,   code:"900-M001", status:"approved",  date:"2024-10-20", uploader:"Faizal Omar",   notes:"Hospital KL" },
 ];
 
 const STATUS_META = {
@@ -112,15 +118,15 @@ function Avatar({ name, color, size = 32 }) {
   );
 }
 
-function StatCard({ label, value, sub, subColor }) {
+function StatCard({ label, value, sub, subColor, isMobile }) {
   return (
     <div style={{
       background: "#fff", border: "1px solid #e8eaf0",
-      borderRadius: 12, padding: "18px 20px", flex: 1,
+      borderRadius: isMobile ? 8 : 12, padding: isMobile ? "12px 10px" : "18px 20px", flex: 1,
     }}>
-      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 700, color: "#111827", lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: subColor || "#6b7280", marginTop: 6 }}>{sub}</div>}
+      <div style={{ fontSize: isMobile ? 9 : 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: isMobile ? 6 : 8 }}>{label}</div>
+      <div style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: "#111827", lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: isMobile ? 10 : 12, color: subColor || "#6b7280", marginTop: isMobile ? 4 : 6, wordWrap: "break-word" }}>{sub}</div>}
     </div>
   );
 }
@@ -130,6 +136,7 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
   if (!viewingDoc) return null;
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
+  const [mobileTab, setMobileTab] = useState("preview");
 
   const handleApprove = () => {
     setDocs(current => current.map(d => d.id === viewingDoc.id ? { ...d, status: "approved" } : d));
@@ -161,9 +168,249 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
   const stages = { pending: 3, review: 3, approved: 4, rejected: 3, synced: 6 };
   const progress = stages[viewingDoc.status] || 0;
 
+  // ── MOBILE VIEW ────────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#fff", display: "flex", flexDirection: "column" }}>
+        {/* Mobile top bar */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <button onClick={() => setViewingDoc(null)} style={{ background: "none", border: "none", fontSize: 24, padding: "8px", cursor: "pointer", color: "#6b7280", minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+          <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{viewingDoc.ref}</div>
+            <div style={{ marginTop: 2 }}><Badge status={viewingDoc.status} /></div>
+          </div>
+          <button onClick={() => setViewingDoc(null)} style={{ background: "none", border: "none", fontSize: 24, padding: "8px", cursor: "pointer", color: "#6b7280", minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+        </div>
+
+        {/* Mobile tab strip (horizontal scroll) */}
+        <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #f0f0f5", overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+          {["preview", "details", "lifecycle"].map(tab => (
+            <button key={tab} onClick={() => setMobileTab(tab)} style={{
+              padding: "12px 16px", fontSize: 13, border: "none", background: "none",
+              cursor: "pointer", fontWeight: mobileTab === tab ? 600 : 400,
+              color: mobileTab === tab ? "#1a6fbd" : "#6b7280",
+              borderBottom: mobileTab === tab ? "3px solid #1a6fbd" : "3px solid transparent",
+              marginBottom: -2, whiteSpace: "nowrap", flexShrink: 0, minHeight: 44
+            }}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content - scrollable middle area */}
+        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", padding: "16px", paddingBottom: isMobile && (viewingDoc.status === "pending" || viewingDoc.status === "review") ? 100 : 16 }}>
+          {mobileTab === "preview" && (
+            <div style={{ background: "#f9fafb", borderRadius: 12, display: "flex", flexDirection: "column", minHeight: "100%", overflow: "hidden" }}>
+              {/* Toolbar (simplified for mobile) */}
+              {hasFileUrl && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <button onClick={() => setZoom(Math.max(50, zoom - 10))} title="Zoom out" style={{
+                      background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px",
+                      fontSize: 12, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s", minHeight: 44, minWidth: 44
+                    }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>−</button>
+                    <span style={{ fontSize: 11, color: "#6b7280", minWidth: 35, textAlign: "center", fontWeight: 500 }}>{zoom}%</span>
+                    <button onClick={() => setZoom(Math.min(200, zoom + 10))} title="Zoom in" style={{
+                      background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px",
+                      fontSize: 12, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s", minHeight: 44, minWidth: 44
+                    }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>+</button>
+                    <button onClick={() => setRotation((rotation + 90) % 360)} title="Rotate" style={{
+                      background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px",
+                      fontSize: 12, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s", minHeight: 44, minWidth: 44
+                    }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>↻</button>
+                  </div>
+                  <button
+                    onClick={() => window.open(viewingDoc.file_url, '_blank')}
+                    title="Download file"
+                    style={{
+                      background: "#1a6fbd", border: "1px solid #1a6fbd", borderRadius: 6, padding: "6px 10px",
+                      fontSize: 12, cursor: "pointer", color: "#fff", fontWeight: 600, transition: "all 0.15s", minHeight: 44, minWidth: 44
+                    }}
+                    onMouseEnter={e => { e.target.style.background = "#1560a0"; }}
+                    onMouseLeave={e => { e.target.style.background = "#1a6fbd"; }}
+                  >
+                    ⬇
+                  </button>
+                </div>
+              )}
+
+              {/* Preview content */}
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px", overflow: "auto" }}>
+                {hasFileUrl ? (
+                  isImageUrl(viewingDoc.file_url) ? (
+                    <img
+                      src={viewingDoc.file_url}
+                      alt={viewingDoc.ref}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                        borderRadius: 8,
+                        transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                        transformOrigin: "center",
+                        transition: "transform 0.2s ease-out"
+                      }}
+                    />
+                  ) : (
+                    <iframe
+                      src={viewingDoc.file_url}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        border: "none",
+                        borderRadius: 8,
+                        transform: `rotate(${rotation}deg)`,
+                        transition: "transform 0.2s ease-out"
+                      }}
+                    />
+                  )
+                ) : (
+                  <div style={{ textAlign: "center", width: "100%", padding: "12px" }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>{SUBTYPE_ICON[viewingDoc.subtype] || "📄"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#9ca3af", marginBottom: 16 }}>No file attached</div>
+                    <button
+                      onClick={() => document.getElementById('upload-file-input-mobile')?.click()}
+                      style={{
+                        background: "#1a6fbd",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "12px 20px",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        marginBottom: 24,
+                        minHeight: 44,
+                        transition: "all 0.15s"
+                      }}
+                      onMouseEnter={e => { e.target.style.background = "#1560a0"; }}
+                      onMouseLeave={e => { e.target.style.background = "#1a6fbd"; }}
+                    >
+                      📤 Upload file
+                    </button>
+                    <input type="file" id="upload-file-input-mobile" style={{ display: "none" }} accept=".pdf,.jpg,.jpeg,.png,.gif" />
+
+                    <div style={{
+                      background: "#fff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 12,
+                      padding: "16px",
+                      textAlign: "left"
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>Summary</div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                        <div style={{ background: "#f9fafb", borderRadius: 8, padding: 10 }}>
+                          <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Reference</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", fontFamily: "monospace" }}>{viewingDoc.ref}</div>
+                        </div>
+                        <div style={{ background: "#f9fafb", borderRadius: 8, padding: 10 }}>
+                          <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Date</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>{fmtDate(viewingDoc.date)}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Party</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>{viewingDoc.party}</div>
+                      </div>
+
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Amount</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{fmt(viewingDoc.amount)}</div>
+                      </div>
+
+                      {viewingDoc.notes && (
+                        <div style={{ background: "#f0fdf4", borderRadius: 8, padding: 10, borderLeft: "3px solid #10b981" }}>
+                          <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Notes</div>
+                          <div style={{ fontSize: 12, color: "#111827" }}>{viewingDoc.notes}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {mobileTab === "details" && (
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", padding: "16px" }}>
+              {[
+                ["Type", viewingDoc.subtype],
+                ["Party / Staff", viewingDoc.party],
+                ["Amount", fmt(viewingDoc.amount)],
+                ["Account code", viewingDoc.code + " · " + (ACCOUNT_CODES.find(a => a.code === viewingDoc.code)?.label || "")],
+                ["Uploaded by", viewingDoc.uploader],
+                ["Date", fmtDate(viewingDoc.date)],
+                ["Notes", viewingDoc.notes || "—"],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 0", borderBottom: "1px solid #f3f4f6", fontSize: 13 }}>
+                  <span style={{ color: "#6b7280", fontWeight: 500 }}>{k}</span>
+                  <span style={{ color: "#111827", fontWeight: 600, textAlign: "right", maxWidth: 160, wordBreak: "break-word" }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {mobileTab === "lifecycle" && (
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", padding: "16px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 16 }}>Steps</div>
+              {lifecycleSteps.map((step, i) => {
+                const done = i < progress;
+                const active = i === progress;
+                return (
+                  <div key={step} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%", flexShrink: 0, fontSize: 12, fontWeight: 700,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: done ? "#10b981" : active ? "#3b82f6" : "#f3f4f6",
+                      color: done || active ? "#fff" : "#9ca3af",
+                    }}>{done ? "✓" : i + 1}</div>
+                    <div style={{ paddingTop: "4px" }}>
+                      <div style={{ fontSize: 13, color: done ? "#065F46" : active ? "#1e40af" : "#9ca3af", fontWeight: active ? 600 : 500 }}>{step}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile fixed bottom action bar */}
+        {viewingDoc.status === "pending" || viewingDoc.status === "review" ? (
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 101, padding: "12px 16px", borderTop: "1px solid #e5e7eb", background: "#fff", display: "flex", gap: 8 }}>
+            <button
+              onClick={handleApprove}
+              style={{
+                flex: 1, padding: "14px 0", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 44, transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.target.style.background = "#059669"; }}
+              onMouseLeave={e => { e.target.style.background = "#10b981"; }}
+            >
+              ✓ Approve
+            </button>
+            <button
+              onClick={handleReject}
+              style={{
+                flex: 1, padding: "14px 0", background: "#fff", color: "#991b1b", border: "2px solid #fecaca", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 44, transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.target.style.background = "#fef2f2"; }}
+              onMouseLeave={e => { e.target.style.background = "#fff"; }}
+            >
+              ✗ Reject
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  // ── DESKTOP VIEW ────────────────────────────────────────────────────────────────
+
+  // ── DESKTOP VIEW ────────────────────────────────────────────────────────────────
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.4)", display: "flex" }} onClick={e => e.target === e.currentTarget && setViewingDoc(null)}>
-      <div style={{ width: isMobile ? "100%" : "calc(100% - 320px)", maxWidth: isMobile ? "100%" : undefined, height: "100%", background: "#fff", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "calc(100% - 320px)", height: "100%", background: "#fff", display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #e8eaf0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
@@ -185,29 +432,29 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #e5e7eb" }}>
               {hasFileUrl && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button onClick={() => setZoom(Math.max(50, zoom - 10))} title="Zoom out" style={{ 
-                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px", 
+                  <button onClick={() => setZoom(Math.max(50, zoom - 10))} title="Zoom out" style={{
+                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px",
                     fontSize: 14, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s"
                   }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>−</button>
                   <span style={{ fontSize: 12, color: "#6b7280", minWidth: 40, textAlign: "center", fontWeight: 500 }}>{zoom}%</span>
-                  <button onClick={() => setZoom(Math.min(200, zoom + 10))} title="Zoom in" style={{ 
-                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px", 
+                  <button onClick={() => setZoom(Math.min(200, zoom + 10))} title="Zoom in" style={{
+                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px",
                     fontSize: 14, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s"
                   }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>+</button>
                   <div style={{ width: "1px", height: "20px", background: "#d1d5db", margin: "0 4px" }} />
-                  <button onClick={() => setRotation((rotation + 90) % 360)} title="Rotate" style={{ 
-                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px", 
+                  <button onClick={() => setRotation((rotation + 90) % 360)} title="Rotate" style={{
+                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px",
                     fontSize: 14, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s"
                   }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>↻</button>
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
                 {hasFileUrl && (
-                  <button 
+                  <button
                     onClick={() => window.open(viewingDoc.file_url, '_blank')}
-                    title="Download file" 
-                    style={{ 
-                      background: "#1a6fbd", border: "1px solid #1a6fbd", borderRadius: 6, padding: "6px 12px", 
+                    title="Download file"
+                    style={{
+                      background: "#1a6fbd", border: "1px solid #1a6fbd", borderRadius: 6, padding: "6px 12px",
                       fontSize: 13, cursor: "pointer", color: "#fff", fontWeight: 600, transition: "all 0.15s"
                     }}
                     onMouseEnter={e => { e.target.style.background = "#1560a0"; }}
@@ -223,8 +470,8 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", overflow: "auto" }}>
               {hasFileUrl ? (
                 isImageUrl(viewingDoc.file_url) ? (
-                  <img 
-                    src={viewingDoc.file_url} 
+                  <img
+                    src={viewingDoc.file_url}
                     alt={viewingDoc.ref}
                     style={{
                       maxWidth: "100%",
@@ -237,16 +484,16 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
                     }}
                   />
                 ) : (
-                  <iframe 
-                    src={viewingDoc.file_url} 
-                    style={{ 
-                      width: "100%", 
-                      height: "100%", 
-                      border: "none", 
+                  <iframe
+                    src={viewingDoc.file_url}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
                       borderRadius: 8,
                       transform: `rotate(${rotation}deg)`,
                       transition: "transform 0.2s ease-out"
-                    }} 
+                    }}
                   />
                 )
               ) : (
@@ -254,7 +501,7 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
                 <div style={{ textAlign: "center", width: "100%" }}>
                   <div style={{ fontSize: 72, marginBottom: 16 }}>{SUBTYPE_ICON[viewingDoc.subtype] || "📄"}</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#9ca3af", marginBottom: 20 }}>No file attached</div>
-                  <button 
+                  <button
                     onClick={() => document.getElementById('upload-file-input')?.click()}
                     style={{
                       background: "#1a6fbd",
@@ -286,7 +533,7 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
                     textAlign: "left"
                   }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 16 }}>Document Summary</div>
-                    
+
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                       <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12 }}>
                         <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Reference</div>
@@ -370,40 +617,38 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
       </div>
 
       {/* Left sidebar - document list (desktop only) */}
-      {!isMobile && (
-        <div style={{ width: 320, background: "#fff", borderLeft: "1px solid #e8eaf0", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ padding: "14px 16px", borderBottom: "1px solid #e8eaf0", fontWeight: 700, fontSize: 13, color: "#111827" }}>All documents</div>
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {docs.map(doc => (
-              <button key={doc.id} onClick={() => handleSelectDoc(doc.id)} style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "12px 14px",
-                background: viewingDoc.id === doc.id ? "#eff6ff" : "transparent",
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left",
-              }}>
-                <div style={{ fontSize: 16, flexShrink: 0 }}>{SUBTYPE_ICON[doc.subtype] || "📄"}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.ref}</div>
-                  <div style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.party}</div>
-                  <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{fmt(doc.amount)}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+      <div style={{ width: 320, background: "#fff", borderLeft: "1px solid #e8eaf0", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #e8eaf0", fontWeight: 700, fontSize: 13, color: "#111827" }}>All documents</div>
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {docs.map(doc => (
+            <button key={doc.id} onClick={() => handleSelectDoc(doc.id)} style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "12px 14px",
+              background: viewingDoc.id === doc.id ? "#eff6ff" : "transparent",
+              border: "none",
+              cursor: "pointer",
+              textAlign: "left",
+            }}>
+              <div style={{ fontSize: 16, flexShrink: 0 }}>{SUBTYPE_ICON[doc.subtype] || "📄"}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.ref}</div>
+                <div style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.party}</div>
+                <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{fmt(doc.amount)}</div>
+              </div>
+            </button>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 // ── SCREENS ────────────────────────────────────────────────────────────────────
 
-function Dashboard({ docs, company, setViewingDoc }) {
+function Dashboard({ docs, company, setViewingDoc, isMobile }) {
   const pending  = docs.filter(d => d.status === "pending").length;
   const approved = docs.filter(d => d.status === "approved").length;
   const total    = docs.reduce((s, d) => s + d.amount, 0);
@@ -429,30 +674,31 @@ function Dashboard({ docs, company, setViewingDoc }) {
   ];
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 1100 }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", margin: 0 }}>Dashboard</h1>
-        <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>{company.name} · October 2024</p>
+    <div style={{ padding: isMobile ? "16px 12px" : "28px 32px", maxWidth: 1100 }}>
+      <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+        <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "#111827", margin: 0 }}>Dashboard</h1>
+        <p style={{ fontSize: isMobile ? 11 : 13, color: "#6b7280", margin: "4px 0 0" }}>{company.name} · October 2024</p>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display:"flex", gap:12, marginBottom:24 }}>
-        <StatCard label="Pending approval" value={pending} sub="↑ 3 new today" subColor="#b45309" />
-        <StatCard label="Processed (MTD)" value={docs.length} sub="↑ 12% vs last month" subColor="#065F46" />
-        <StatCard label="Total amount (MTD)" value={fmt(total)} sub="Supplier + Claims" />
-        <StatCard label="Awaiting bank maker" value={bankers} sub="Finance action needed" subColor="#b45309" />
+      {/* Stats row - responsive grid */}
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: isMobile ? 16 : 24 }}>
+        <StatCard label="Pending approval" value={pending} sub="↑ 3 new today" subColor="#b45309" isMobile={isMobile} />
+        <StatCard label="Processed (MTD)" value={docs.length} sub="↑ 12% vs last month" subColor="#065F46" isMobile={isMobile} />
+        <StatCard label="Total amount (MTD)" value={fmt(total)} sub="Supplier + Claims" isMobile={isMobile} />
+        <StatCard label="Awaiting bank maker" value={bankers} sub="Finance action needed" subColor="#b45309" isMobile={isMobile} />
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr", gap:16, marginBottom:16 }}>
+      {/* Recent docs and pipeline - stack on mobile */}
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: 16, marginBottom: 16 }}>
         {/* Recent documents */}
-        <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:12, overflow:"hidden" }}>
-          <div style={{ padding:"14px 20px", borderBottom:"1px solid #f0f0f5", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <span style={{ fontWeight:600, fontSize:14, color:"#111827" }}>Recent documents</span>
-            <span style={{ fontSize:12, color:"#1a6fbd", cursor:"pointer" }}>View all →</span>
+        <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius: isMobile ? 8 : 12, overflow:"hidden" }}>
+          <div style={{ padding: isMobile ? "10px 12px" : "14px 20px", borderBottom:"1px solid #f0f0f5", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <span style={{ fontWeight:600, fontSize: isMobile ? 12 : 14, color:"#111827" }}>Recent documents</span>
+            <span style={{ fontSize: isMobile ? 11 : 12, color:"#1a6fbd", cursor:"pointer" }}>View all →</span>
           </div>
           {recent.map(doc => (
             <div key={doc.id} style={{
-              display:"flex", alignItems:"center", gap:12, padding:"10px 20px",
+              display:"flex", alignItems:"center", gap: isMobile ? 8 : 12, padding: isMobile ? "8px 12px" : "10px 20px",
               borderBottom:"1px solid #f9fafb", cursor:"pointer",
               transition:"background .12s",
             }}
@@ -460,13 +706,13 @@ function Dashboard({ docs, company, setViewingDoc }) {
               onMouseEnter={e => e.currentTarget.style.background="#f9fafb"}
               onMouseLeave={e => e.currentTarget.style.background="transparent"}
             >
-              <div style={{ fontSize:20 }}>{SUBTYPE_ICON[doc.subtype] || "📄"}</div>
+              <div style={{ fontSize: isMobile ? 16 : 20 }}>{SUBTYPE_ICON[doc.subtype] || "📄"}</div>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{doc.ref}</div>
-                <div style={{ fontSize:11, color:"#6b7280" }}>{doc.party} · {doc.subtype}</div>
+                <div style={{ fontSize: isMobile ? 11 : 13, fontWeight:600, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{doc.ref}</div>
+                <div style={{ fontSize: isMobile ? 10 : 11, color:"#6b7280", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{doc.party} · {doc.subtype}</div>
               </div>
               <div style={{ textAlign:"right", flexShrink:0 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:"#111827" }}>{fmt(doc.amount)}</div>
+                <div style={{ fontSize: isMobile ? 11 : 13, fontWeight:600, color:"#111827" }}>{fmt(doc.amount)}</div>
                 <Badge status={doc.status} />
               </div>
             </div>
@@ -475,26 +721,26 @@ function Dashboard({ docs, company, setViewingDoc }) {
 
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
           {/* Pipeline */}
-          <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:12, padding:"14px 20px" }}>
-            <div style={{ fontWeight:600, fontSize:14, color:"#111827", marginBottom:14 }}>Approval pipeline</div>
+          <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius: isMobile ? 8 : 12, padding: isMobile ? "10px 12px" : "14px 20px" }}>
+            <div style={{ fontWeight:600, fontSize: isMobile ? 12 : 14, color:"#111827", marginBottom: isMobile ? 10 : 14 }}>Approval pipeline</div>
             {pipeline.map(p => (
-              <div key={p.label} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-                <span style={{ fontSize:12, color:"#6b7280", width:90, flexShrink:0 }}>{p.label}</span>
+              <div key={p.label} style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 10, marginBottom: isMobile ? 8 : 10 }}>
+                <span style={{ fontSize: isMobile ? 11 : 12, color:"#6b7280", width: isMobile ? 60 : 90, flexShrink:0 }}>{p.label}</span>
                 <div style={{ flex:1, height:6, background:"#f3f4f6", borderRadius:3, overflow:"hidden" }}>
                   <div style={{ width:`${Math.round((p.count / docs.length) * 100)}%`, height:"100%", background:p.color, borderRadius:3, transition:"width .5s" }} />
                 </div>
-                <span style={{ fontSize:12, color:"#374151", fontWeight:600, width:20, textAlign:"right" }}>{p.count}</span>
+                <span style={{ fontSize: isMobile ? 11 : 12, color:"#374151", fontWeight:600, width:20, textAlign:"right" }}>{p.count}</span>
               </div>
             ))}
           </div>
 
           {/* By type */}
-          <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:12, padding:"14px 20px" }}>
-            <div style={{ fontWeight:600, fontSize:14, color:"#111827", marginBottom:12 }}>Document types</div>
+          <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius: isMobile ? 8 : 12, padding: isMobile ? "10px 12px" : "14px 20px" }}>
+            <div style={{ fontWeight:600, fontSize: isMobile ? 12 : 14, color:"#111827", marginBottom: isMobile ? 10 : 12 }}>Document types</div>
             {byType.map(t => (
-              <div key={t.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"5px 0", borderBottom:"1px solid #f9fafb" }}>
-                <span style={{ fontSize:12, color:"#374151" }}>{t.label}</span>
-                <span style={{ fontSize:12, fontWeight:600, color:"#111827", background:"#f3f4f6", padding:"1px 8px", borderRadius:10 }}>{t.count}</span>
+              <div key={t.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding: isMobile ? "4px 0" : "5px 0", borderBottom:"1px solid #f9fafb" }}>
+                <span style={{ fontSize: isMobile ? 11 : 12, color:"#374151" }}>{t.label}</span>
+                <span style={{ fontSize: isMobile ? 11 : 12, fontWeight:600, color:"#111827", background:"#f3f4f6", padding:"1px 8px", borderRadius:10 }}>{t.count}</span>
               </div>
             ))}
           </div>
@@ -1481,24 +1727,84 @@ export default function App() {
 
   return (
     <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", minHeight:"100vh", fontFamily:"'DM Sans', system-ui, sans-serif", background:"#f5f6fa" }}>
-      {/* Sidebar */}
-      <div style={{ width: isMobile ? "100%" : 220, background:"#fff", borderRight: isMobile ? "none" : "1px solid #e8eaf0", borderBottom: isMobile ? "1px solid #e8eaf0" : "none", display:"flex", flexDirection:"column", flexShrink:0, position: isMobile ? "relative" : "sticky", top:0, height: isMobile ? "auto" : "100vh" }}>
-        <div style={{ padding:"18px 20px 14px", borderBottom:"1px solid #f0f0f5" }}>
-          <div style={{ fontSize:17, fontWeight:800, color:"#111827" }} >A<span style={{ color:"#1a6fbd" }}>prova</span></div>
-          <div style={{ fontSize:10, color:"#9ca3af", marginTop:1, letterSpacing:"0.05em" }}>DOCUMENT APPROVALS</div>
-        </div>
+      {/* Sidebar (hidden on mobile) */}
+      {!isMobile && (
+        <div style={{ width: 220, background:"#fff", borderRight: "1px solid #e8eaf0", display:"flex", flexDirection:"column", flexShrink:0, position: "sticky", top:0, height: "100vh" }}>
+          <div style={{ padding:"18px 20px 14px", borderBottom:"1px solid #f0f0f5" }}>
+            <div style={{ fontSize:17, fontWeight:800, color:"#111827" }} >A<span style={{ color:"#1a6fbd" }}>prova</span></div>
+            <div style={{ fontSize:10, color:"#9ca3af", marginTop:1, letterSpacing:"0.05em" }}>DOCUMENT APPROVALS</div>
+          </div>
 
-        {/* Company switcher */}
-        <div style={{ padding:"12px 14px", borderBottom:"1px solid #f0f0f5", position:"relative" }}>
-          <div onClick={() => setCoOpen(!coOpen)} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", background:"#f5f6fa", borderRadius:10, cursor:"pointer", border:"1px solid #e8eaf0" }}>
-            <Avatar name={company.short} color={company.color} size={26} />
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:11, fontWeight:600, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{company.name}</div>
-              <div style={{ fontSize:10, color:"#6b7280" }}>Switch company ▾</div>
+          {/* Company switcher */}
+          <div style={{ padding:"12px 14px", borderBottom:"1px solid #f0f0f5", position:"relative" }}>
+            <div onClick={() => setCoOpen(!coOpen)} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", background:"#f5f6fa", borderRadius:10, cursor:"pointer", border:"1px solid #e8eaf0" }}>
+              <Avatar name={company.short} color={company.color} size={26} />
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{company.name}</div>
+                <div style={{ fontSize:10, color:"#6b7280" }}>Switch company ▾</div>
+              </div>
+            </div>
+            {coOpen && (
+              <div style={{ position:"absolute", top:"100%", left:14, right:14, background:"#fff", border:"1px solid #e8eaf0", borderRadius:10, boxShadow:"0 4px 16px rgba(0,0,0,0.08)", zIndex:50, overflow:"hidden" }}>
+                {COMPANIES.map(co => (
+                  <div key={co.id} onClick={() => { setCompany(co); setCoOpen(false); }}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", cursor:"pointer", background: company.id===co.id ? "#eff6ff":"#fff" }}
+                    onMouseEnter={e => e.currentTarget.style.background="#f9fafb"}
+                    onMouseLeave={e => e.currentTarget.style.background=company.id===co.id?"#eff6ff":"#fff"}
+                  >
+                    <Avatar name={co.short} color={co.color} size={22} />
+                    <span style={{ fontSize:12, color:"#111827", fontWeight: company.id===co.id ? 600:400 }}>{co.name}</span>
+                    {company.id===co.id && <span style={{ marginLeft:"auto", fontSize:12, color:"#1a6fbd" }}>✓</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Nav items */}
+          <nav style={{ flex:1, padding:"10px 10px", overflowY: "auto" }}>
+            {NAV.map(n => (
+              <div key={n.key} onClick={() => setScreen(n.key)}
+                style={{
+                  display: "flex", width: "100%", alignItems:"center", gap:10, padding:"9px 12px",
+                  borderRadius:9, cursor:"pointer", marginBottom: 2,
+                  background: screen===n.key ? "#eff6ff" : "transparent",
+                  color: screen===n.key ? "#1a6fbd" : "#374151",
+                  fontWeight: screen===n.key ? 600 : 400,
+                  fontSize:13, transition:"background .12s", position:"relative",
+                }}
+                onMouseEnter={e => { if(screen!==n.key) e.currentTarget.style.background="#f5f6fa"; }}
+                onMouseLeave={e => { if(screen!==n.key) e.currentTarget.style.background="transparent"; }}
+              >
+                <span style={{ fontSize:15 }}>{n.icon}</span>
+                {n.label}
+                {n.key === "approvals" && pendingCount > 0 && (
+                  <span style={{ marginLeft:"auto", background:"#ef4444", color:"#fff", fontSize:10, fontWeight:700, padding:"1px 6px", borderRadius:10 }}>{pendingCount}</span>
+                )}
+              </div>
+            ))}
+          </nav>
+
+          {/* User */}
+          <div style={{ padding:"12px 14px", borderTop:"1px solid #f0f0f5", display:"flex", alignItems:"center", gap:10, flexWrap: "wrap" }}>
+            <Avatar name="LW" color="#1a6fbd" size={30} />
+            <div>
+              <div style={{ fontSize:12, fontWeight:600, color:"#111827" }}>Lim Wei Shen</div>
+              <div style={{ fontSize:10, color:"#6b7280" }}>Admin · Growth plan</div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mobile top bar (only on mobile) */}
+      {isMobile && (
+        <div style={{ background:"#fff", borderBottom: "1px solid #e8eaf0", padding: "12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", gap: 12, position: "sticky", top: 0, zIndex: 40 }}>
+          <div style={{ fontSize:16, fontWeight:800, color:"#111827" }}>A<span style={{ color:"#1a6fbd" }}>prova</span></div>
+          <div onClick={() => setCoOpen(!coOpen)} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", background:"#f5f6fa", borderRadius:8, cursor:"pointer", border:"1px solid #e8eaf0", minHeight: 40, minWidth: 40, justifyContent: "center" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{company.short}</div>
+          </div>
           {coOpen && (
-            <div style={{ position:"absolute", top:"100%", left:14, right:14, background:"#fff", border:"1px solid #e8eaf0", borderRadius:10, boxShadow:"0 4px 16px rgba(0,0,0,0.08)", zIndex:50, overflow:"hidden" }}>
+            <div style={{ position:"absolute", top:"100%", right:16, left:16, background:"#fff", border:"1px solid #e8eaf0", borderRadius:10, boxShadow:"0 4px 16px rgba(0,0,0,0.08)", zIndex:50, overflow:"hidden", marginTop: 8 }}>
               {COMPANIES.map(co => (
                 <div key={co.id} onClick={() => { setCompany(co); setCoOpen(false); }}
                   style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", cursor:"pointer", background: company.id===co.id ? "#eff6ff":"#fff" }}
@@ -1513,44 +1819,11 @@ export default function App() {
             </div>
           )}
         </div>
-
-        {/* Nav items */}
-        <nav style={{ flex:1, padding:"10px 10px", overflowY:isMobile ? "hidden" : "auto", overflowX:isMobile ? "auto" : "hidden", display:isMobile ? "flex" : "block", gap:isMobile ? 8 : undefined, alignItems:isMobile ? "center" : undefined, whiteSpace:isMobile ? "nowrap" : undefined }}>
-          {NAV.map(n => (
-            <div key={n.key} onClick={() => setScreen(n.key)}
-              style={{
-                display: isMobile ? "inline-flex" : "flex", width: isMobile ? undefined : "100%", alignItems:"center", gap:10, padding:"9px 12px",
-                borderRadius:9, cursor:"pointer", marginBottom:isMobile ? 0 : 2,
-                background: screen===n.key ? "#eff6ff" : "transparent",
-                color: screen===n.key ? "#1a6fbd" : "#374151",
-                fontWeight: screen===n.key ? 600 : 400,
-                fontSize:13, transition:"background .12s", position:"relative", marginRight:isMobile ? 8 : undefined,
-              }}
-              onMouseEnter={e => { if(screen!==n.key) e.currentTarget.style.background="#f5f6fa"; }}
-              onMouseLeave={e => { if(screen!==n.key) e.currentTarget.style.background="transparent"; }}
-            >
-              <span style={{ fontSize:15 }}>{n.icon}</span>
-              {n.label}
-              {n.key === "approvals" && pendingCount > 0 && (
-                <span style={{ marginLeft:"auto", background:"#ef4444", color:"#fff", fontSize:10, fontWeight:700, padding:"1px 6px", borderRadius:10 }}>{pendingCount}</span>
-              )}
-            </div>
-          ))}
-        </nav>
-
-        {/* User */}
-        <div style={{ padding:"12px 14px", borderTop:"1px solid #f0f0f5", display:"flex", alignItems:"center", gap:10, flexWrap: "wrap" }}>
-          <Avatar name="LW" color="#1a6fbd" size={30} />
-          <div>
-            <div style={{ fontSize:12, fontWeight:600, color:"#111827" }}>Lim Wei Shen</div>
-            <div style={{ fontSize:10, color:"#6b7280" }}>Admin · Growth plan</div>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Main content */}
-      <div style={{ flex:1, overflowY:"auto", overflowX:"hidden" }} onClick={() => coOpen && setCoOpen(false)}>
-        {screen === "dashboard"  && <Dashboard  docs={docs} company={company} setViewingDoc={setViewingDoc} />}
+      <div style={{ flex:1, overflowY:"auto", overflowX:"hidden", paddingBottom: isMobile ? 60 : 0 }} onClick={() => coOpen && setCoOpen(false)}>
+        {screen === "dashboard"  && <Dashboard  docs={docs} company={company} setViewingDoc={setViewingDoc} isMobile={isMobile} />}
         {screen === "documents"  && <Documents  docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
         {screen === "upload"     && <Upload     docs={docs} setDocs={setDocs} />}
         {screen === "approvals"  && <Approvals  docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
@@ -1560,6 +1833,23 @@ export default function App() {
         {screen === "pricing"    && <Pricing />}
         {screen === "settings"   && <Settings companies={COMPANIES} company={company} setCompany={setCompany} />}
       </div>
+
+      {/* Mobile bottom nav (only on mobile) */}
+      {isMobile && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: "1px solid #e8eaf0", display: "flex", justifyContent: "space-around", alignItems: "center", height: 60, zIndex: 40 }}>
+          {NAV.slice(0, 5).map(n => (
+            <button key={n.key} onClick={() => setScreen(n.key)} style={{
+              flex: 1, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+              background: screen === n.key ? "#eff6ff" : "transparent",
+              border: "none", cursor: "pointer", fontSize: 20, color: screen === n.key ? "#1a6fbd" : "#6b7280",
+              transition: "all 0.12s"
+            }} title={n.label}>
+              <span>{n.icon}</span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: "inherit" }}>{n.key === "approvals" && pendingCount > 0 ? pendingCount : ""}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Document Viewer */}
       <DocumentViewer docs={docs} viewingDoc={viewingDoc} setViewingDoc={setViewingDoc} setDocs={setDocs} company={company} isMobile={isMobile} />
