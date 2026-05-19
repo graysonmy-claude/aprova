@@ -125,9 +125,285 @@ function StatCard({ label, value, sub, subColor }) {
   );
 }
 
+// ── DOCUMENT VIEWER ────────────────────────────────────────────────────────────
+function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isMobile }) {
+  if (!viewingDoc) return null;
+  const [zoom, setZoom] = useState(100);
+  const [rotation, setRotation] = useState(0);
+
+  const handleApprove = () => {
+    setDocs(current => current.map(d => d.id === viewingDoc.id ? { ...d, status: "approved" } : d));
+    setViewingDoc({ ...viewingDoc, status: "approved" });
+  };
+
+  const handleReject = () => {
+    setDocs(current => current.map(d => d.id === viewingDoc.id ? { ...d, status: "rejected" } : d));
+    setViewingDoc({ ...viewingDoc, status: "rejected" });
+  };
+
+  const handleSelectDoc = (id) => {
+    const doc = docs.find(d => d.id === id);
+    if (doc) setViewingDoc(doc);
+  };
+
+  // Helper: Detect if URL points to an image
+  const isImageUrl = (url) => {
+    if (!url) return false;
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+    const lowerUrl = url.toLowerCase();
+    return imageExtensions.some(ext => lowerUrl.includes(ext));
+  };
+
+  // Helper: Determine if file_url exists and is accessible
+  const hasFileUrl = viewingDoc.file_url && viewingDoc.file_url.trim() !== '';
+
+  const lifecycleSteps = ["Uploaded", "OCR", "Mapped", "Approval", "Finance", "Acct sync", "Done"];
+  const stages = { pending: 3, review: 3, approved: 4, rejected: 3, synced: 6 };
+  const progress = stages[viewingDoc.status] || 0;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.4)", display: "flex" }} onClick={e => e.target === e.currentTarget && setViewingDoc(null)}>
+      <div style={{ width: isMobile ? "100%" : "calc(100% - 320px)", maxWidth: isMobile ? "100%" : undefined, height: "100%", background: "#fff", display: "flex", flexDirection: "column" }}>
+        {/* Header */}
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid #e8eaf0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+            <div style={{ fontSize: 28 }}>{SUBTYPE_ICON[viewingDoc.subtype] || "📄"}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{viewingDoc.ref}</div>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>Uploaded by {viewingDoc.uploader} · {fmtDate(viewingDoc.date)}</div>
+            </div>
+            <Badge status={viewingDoc.status} />
+          </div>
+          <button onClick={() => setViewingDoc(null)} style={{ background: "none", border: "none", fontSize: 24, color: "#6b7280", cursor: "pointer" }}>×</button>
+        </div>
+
+        {/* Main content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+          {/* Preview with toolbar */}
+          <div style={{ background: "#f9fafb", borderRadius: 12, marginBottom: 20, display: "flex", flexDirection: "column", minHeight: 240 }}>
+            {/* Toolbar */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #e5e7eb" }}>
+              {hasFileUrl && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button onClick={() => setZoom(Math.max(50, zoom - 10))} title="Zoom out" style={{ 
+                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px", 
+                    fontSize: 14, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s"
+                  }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>−</button>
+                  <span style={{ fontSize: 12, color: "#6b7280", minWidth: 40, textAlign: "center", fontWeight: 500 }}>{zoom}%</span>
+                  <button onClick={() => setZoom(Math.min(200, zoom + 10))} title="Zoom in" style={{ 
+                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px", 
+                    fontSize: 14, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s"
+                  }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>+</button>
+                  <div style={{ width: "1px", height: "20px", background: "#d1d5db", margin: "0 4px" }} />
+                  <button onClick={() => setRotation((rotation + 90) % 360)} title="Rotate" style={{ 
+                    background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px", 
+                    fontSize: 14, cursor: "pointer", color: "#6b7280", fontWeight: 600, transition: "all 0.15s"
+                  }} onMouseEnter={e => { e.target.style.background = "#f3f4f6"; }} onMouseLeave={e => { e.target.style.background = "#fff"; }}>↻</button>
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
+                {hasFileUrl && (
+                  <button 
+                    onClick={() => window.open(viewingDoc.file_url, '_blank')}
+                    title="Download file" 
+                    style={{ 
+                      background: "#1a6fbd", border: "1px solid #1a6fbd", borderRadius: 6, padding: "6px 12px", 
+                      fontSize: 13, cursor: "pointer", color: "#fff", fontWeight: 600, transition: "all 0.15s"
+                    }}
+                    onMouseEnter={e => { e.target.style.background = "#1560a0"; }}
+                    onMouseLeave={e => { e.target.style.background = "#1a6fbd"; }}
+                  >
+                    ⬇ Download
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Preview content */}
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", overflow: "auto" }}>
+              {hasFileUrl ? (
+                isImageUrl(viewingDoc.file_url) ? (
+                  <img 
+                    src={viewingDoc.file_url} 
+                    alt={viewingDoc.ref}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      objectFit: "contain",
+                      borderRadius: 8,
+                      transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                      transformOrigin: "center",
+                      transition: "transform 0.2s ease-out"
+                    }}
+                  />
+                ) : (
+                  <iframe 
+                    src={viewingDoc.file_url} 
+                    style={{ 
+                      width: "100%", 
+                      height: "100%", 
+                      border: "none", 
+                      borderRadius: 8,
+                      transform: `rotate(${rotation}deg)`,
+                      transition: "transform 0.2s ease-out"
+                    }} 
+                  />
+                )
+              ) : (
+                /* Placeholder when no file attached */
+                <div style={{ textAlign: "center", width: "100%" }}>
+                  <div style={{ fontSize: 72, marginBottom: 16 }}>{SUBTYPE_ICON[viewingDoc.subtype] || "📄"}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#9ca3af", marginBottom: 20 }}>No file attached</div>
+                  <button 
+                    onClick={() => document.getElementById('upload-file-input')?.click()}
+                    style={{
+                      background: "#1a6fbd",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "10px 20px",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      marginBottom: 32,
+                      transition: "all 0.15s"
+                    }}
+                    onMouseEnter={e => { e.target.style.background = "#1560a0"; }}
+                    onMouseLeave={e => { e.target.style.background = "#1a6fbd"; }}
+                  >
+                    📤 Upload file
+                  </button>
+                  <input type="file" id="upload-file-input" style={{ display: "none" }} accept=".pdf,.jpg,.jpeg,.png,.gif" />
+
+                  {/* Summary card */}
+                  <div style={{
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    padding: "20px",
+                    maxWidth: "420px",
+                    margin: "0 auto",
+                    textAlign: "left"
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 16 }}>Document Summary</div>
+                    
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12 }}>
+                        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Reference</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", fontFamily: "monospace" }}>{viewingDoc.ref}</div>
+                      </div>
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12 }}>
+                        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Date</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{fmtDate(viewingDoc.date)}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Party</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{viewingDoc.party}</div>
+                    </div>
+
+                    <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Amount</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{fmt(viewingDoc.amount)}</div>
+                    </div>
+
+                    {viewingDoc.notes && (
+                      <div style={{ background: "#f0fdf4", borderRadius: 8, padding: 12, borderLeft: "3px solid #10b981" }}>
+                        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Notes</div>
+                        <div style={{ fontSize: 13, color: "#111827" }}>{viewingDoc.notes}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Meta strip */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Amount</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{fmt(viewingDoc.amount)}</div>
+            </div>
+            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Account Code</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", fontFamily: "monospace" }}>{viewingDoc.code}</div>
+              <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4 }}>{ACCOUNT_CODES.find(a => a.code === viewingDoc.code)?.label}</div>
+            </div>
+            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Company</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{company.short}</div>
+            </div>
+          </div>
+
+          {/* Lifecycle */}
+          <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Lifecycle</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+              {lifecycleSteps.map((step, i) => {
+                const done = i < progress;
+                const active = i === progress;
+                return (
+                  <div key={step} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                      background: done ? "#10b981" : active ? "#3b82f6" : "#f3f4f6",
+                      color: done || active ? "#fff" : "#9ca3af",
+                      fontSize: 14, fontWeight: 700
+                    }}>{done ? "✓" : i + 1}</div>
+                    <div style={{ fontSize: 10, color: done ? "#065F46" : active ? "#1e40af" : "#9ca3af", textAlign: "center", fontWeight: active ? 600 : 400 }}>{step}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        {viewingDoc.status === "pending" || viewingDoc.status === "review" ? (
+          <div style={{ padding: "16px 20px", borderTop: "1px solid #e8eaf0", display: "flex", gap: 10 }}>
+            <button onClick={handleApprove} style={{ flex: 1, padding: "12px 0", background: "#10b981", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>✓ Approve</button>
+            <button onClick={handleReject} style={{ flex: 1, padding: "12px 0", background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>✗ Reject</button>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Left sidebar - document list (desktop only) */}
+      {!isMobile && (
+        <div style={{ width: 320, background: "#fff", borderLeft: "1px solid #e8eaf0", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid #e8eaf0", fontWeight: 700, fontSize: 13, color: "#111827" }}>All documents</div>
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {docs.map(doc => (
+              <button key={doc.id} onClick={() => handleSelectDoc(doc.id)} style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 14px",
+                background: viewingDoc.id === doc.id ? "#eff6ff" : "transparent",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+              }}>
+                <div style={{ fontSize: 16, flexShrink: 0 }}>{SUBTYPE_ICON[doc.subtype] || "📄"}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.ref}</div>
+                  <div style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.party}</div>
+                  <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{fmt(doc.amount)}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SCREENS ────────────────────────────────────────────────────────────────────
 
-function Dashboard({ docs, company }) {
+function Dashboard({ docs, company, setViewingDoc }) {
   const pending  = docs.filter(d => d.status === "pending").length;
   const approved = docs.filter(d => d.status === "approved").length;
   const total    = docs.reduce((s, d) => s + d.amount, 0);
@@ -180,6 +456,7 @@ function Dashboard({ docs, company }) {
               borderBottom:"1px solid #f9fafb", cursor:"pointer",
               transition:"background .12s",
             }}
+              onClick={() => setViewingDoc(doc)}
               onMouseEnter={e => e.currentTarget.style.background="#f9fafb"}
               onMouseLeave={e => e.currentTarget.style.background="transparent"}
             >
@@ -227,7 +504,7 @@ function Dashboard({ docs, company }) {
   );
 }
 
-function Documents({ docs, setDocs }) {
+function Documents({ docs, setDocs, setViewingDoc }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -291,7 +568,7 @@ function Documents({ docs, setDocs }) {
             <tbody>
               {filtered.map(doc => (
                 <tr key={doc.id}
-                  onClick={() => setSelected(selected?.id===doc.id ? null : doc)}
+                  onClick={() => { setViewingDoc(doc); setSelected(null); }}
                   style={{ borderBottom:"1px solid #f3f4f6", cursor:"pointer", background: selected?.id===doc.id ? "#eff6ff" : "transparent", transition:"background .1s" }}
                   onMouseEnter={e => { if (selected?.id!==doc.id) e.currentTarget.style.background="#f9fafb"; }}
                   onMouseLeave={e => { if (selected?.id!==doc.id) e.currentTarget.style.background="transparent"; }}
@@ -595,7 +872,7 @@ function Upload({ docs, setDocs }) {
   );
 }
 
-function Approvals({ docs, setDocs }) {
+function Approvals({ docs, setDocs, setViewingDoc }) {
   const pending = docs.filter(d => d.status === "pending" || d.status === "review");
 
   function approve(id) { setDocs(ds => ds.map(d => d.id===id ? {...d, status:"approved"} : d)); }
@@ -615,7 +892,7 @@ function Approvals({ docs, setDocs }) {
           <div style={{ fontSize:13, color:"#6b7280", marginTop:4 }}>No documents pending approval.</div>
         </div>
       ) : pending.map(doc => (
-        <div key={doc.id} style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:14, padding:20, marginBottom:14, display:"flex", gap:16, alignItems:"flex-start" }}>
+        <div key={doc.id} onClick={() => setViewingDoc(doc)} style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:14, padding:20, marginBottom:14, display:"flex", gap:16, alignItems:"flex-start", cursor:"pointer" }}>
           <div style={{ fontSize:36, flexShrink:0 }}>{SUBTYPE_ICON[doc.subtype]}</div>
           <div style={{ flex:1 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
@@ -643,7 +920,7 @@ function Approvals({ docs, setDocs }) {
   );
 }
 
-function Finance({ docs, setDocs }) {
+function Finance({ docs, setDocs, setViewingDoc }) {
   const ready = docs.filter(d => d.status === "approved" && d.type === "supplier");
   const [paid, setPaid] = useState([]);
 
@@ -674,7 +951,7 @@ function Finance({ docs, setDocs }) {
         {ready.length === 0 ? (
           <div style={{ padding:40, textAlign:"center", color:"#9ca3af" }}>No approved supplier documents pending payment.</div>
         ) : ready.map(doc => (
-          <div key={doc.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 20px", borderBottom:"1px solid #f9fafb" }}>
+          <div key={doc.id} onClick={() => setViewingDoc(doc)} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 20px", borderBottom:"1px solid #f9fafb", cursor:"pointer" }}>
             <div style={{ fontSize:24 }}>{SUBTYPE_ICON[doc.subtype]}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:13, fontWeight:600, color:"#111827" }}>{doc.party}</div>
@@ -1188,6 +1465,7 @@ export default function App() {
   const [company, setCompany] = useState(COMPANIES[0]);
   const [docs, setDocs] = useState(INITIAL_DOCS);
   const [members, setMembers] = useState(INITIAL_MEMBERS);
+  const [viewingDoc, setViewingDoc] = useState(null);
   const [coOpen, setCoOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
@@ -1272,16 +1550,19 @@ export default function App() {
 
       {/* Main content */}
       <div style={{ flex:1, overflowY:"auto", overflowX:"hidden" }} onClick={() => coOpen && setCoOpen(false)}>
-        {screen === "dashboard"  && <Dashboard  docs={docs} company={company} />}
-        {screen === "documents"  && <Documents  docs={docs} setDocs={setDocs} />}
+        {screen === "dashboard"  && <Dashboard  docs={docs} company={company} setViewingDoc={setViewingDoc} />}
+        {screen === "documents"  && <Documents  docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
         {screen === "upload"     && <Upload     docs={docs} setDocs={setDocs} />}
-        {screen === "approvals"  && <Approvals  docs={docs} setDocs={setDocs} />}
-        {screen === "finance"    && <Finance    docs={docs} setDocs={setDocs} />}
+        {screen === "approvals"  && <Approvals  docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
+        {screen === "finance"    && <Finance    docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
         {screen === "accounting" && <AccountingSync docs={docs} />}
         {screen === "users"      && <UserManagement members={members} setMembers={setMembers} company={company} />}
         {screen === "pricing"    && <Pricing />}
         {screen === "settings"   && <Settings companies={COMPANIES} company={company} setCompany={setCompany} />}
       </div>
+
+      {/* Document Viewer */}
+      <DocumentViewer docs={docs} viewingDoc={viewingDoc} setViewingDoc={setViewingDoc} setDocs={setDocs} company={company} isMobile={isMobile} />
     </div>
   );
 }
