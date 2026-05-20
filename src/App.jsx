@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { compressImage } from "./lib/uploadUtils.js";
+import { extractDocumentFields } from "./lib/ocrService.js";
 
 // ── Palette & helpers ──────────────────────────────────────────────────────────
 const COMPANIES = [
@@ -51,6 +53,9 @@ const SUBTYPE_ICON = {
 
 function fmt(n) { return "RM " + n.toLocaleString("en-MY", { minimumFractionDigits:2 }); }
 function fmtDate(d) { return new Date(d).toLocaleDateString("en-MY", { day:"2-digit", month:"short", year:"numeric" }); }
+function fmtDateTime(d) { const dt = new Date(d); return dt.toLocaleString("en-MY", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:false }); }
+
+const BANK_ACCOUNTS = ["Maybank Current", "CIMB Current", "Public Bank Current", "RHB Current"];
 
 const USER_PERMISSIONS = [
   { key: "upload_supplier", label: "Upload supplier" },
@@ -194,7 +199,7 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
 
         {/* Mobile tab strip (horizontal scroll) */}
         <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #f0f0f5", overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
-          {["preview", "details", "lifecycle"].map(tab => (
+          {["preview", "details"].map(tab => (
             <button key={tab} onClick={() => setMobileTab(tab)} style={{
               padding: "12px 16px", fontSize: 13, border: "none", background: "none",
               cursor: "pointer", fontWeight: mobileTab === tab ? 600 : 400,
@@ -353,35 +358,33 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
                 ["Uploaded by", viewingDoc.uploader],
                 ["Date", fmtDate(viewingDoc.date)],
                 ["Notes", viewingDoc.notes || "—"],
-              ].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 0", borderBottom: "1px solid #f3f4f6", fontSize: 13 }}>
+              ].map(([k, v], index) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 0", borderBottom: index === 6 ? "none" : "1px solid #f3f4f6", fontSize: 13 }}>
                   <span style={{ color: "#6b7280", fontWeight: 500 }}>{k}</span>
                   <span style={{ color: "#111827", fontWeight: 600, textAlign: "right", maxWidth: 160, wordBreak: "break-word" }}>{v}</span>
                 </div>
               ))}
-            </div>
-          )}
 
-          {mobileTab === "lifecycle" && (
-            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", padding: "16px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 16 }}>Steps</div>
-              {lifecycleSteps.map((step, i) => {
-                const done = i < progress;
-                const active = i === progress;
-                return (
-                  <div key={step} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: "50%", flexShrink: 0, fontSize: 12, fontWeight: 700,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      background: done ? "#10b981" : active ? "#3b82f6" : "#f3f4f6",
-                      color: done || active ? "#fff" : "#9ca3af",
-                    }}>{done ? "✓" : i + 1}</div>
-                    <div style={{ paddingTop: "4px" }}>
-                      <div style={{ fontSize: 13, color: done ? "#065F46" : active ? "#1e40af" : "#9ca3af", fontWeight: active ? 600 : 500 }}>{step}</div>
+              <div style={{ marginTop: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>Lifecycle</div>
+                {lifecycleSteps.map((step, i) => {
+                  const done = i < progress;
+                  const active = i === progress;
+                  return (
+                    <div key={step} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: "50%", flexShrink: 0, fontSize: 12, fontWeight: 700,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: done ? "#10b981" : active ? "#3b82f6" : "#f3f4f6",
+                        color: done || active ? "#fff" : "#9ca3af",
+                      }}>{done ? "✓" : i + 1}</div>
+                      <div style={{ paddingTop: "2px" }}>
+                        <div style={{ fontSize: 13, color: done ? "#065F46" : active ? "#1e40af" : "#9ca3af", fontWeight: active ? 600 : 500 }}>{step}</div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -419,10 +422,10 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
 
   // ── DESKTOP VIEW ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.4)", display: "flex" }} onClick={e => e.target === e.currentTarget && setViewingDoc(null)}>
-      <div style={{ width: "calc(100% - 320px)", height: "100%", background: "#fff", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.4)", display: "flex", overflow: "hidden" }} onClick={e => e.target === e.currentTarget && setViewingDoc(null)}>
+      <div style={{ width: "calc(100% - 280px)", minWidth: 0, height: "100%", background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #e8eaf0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ height: 64, padding: "14px 20px", borderBottom: "1px solid #e8eaf0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
             <div style={{ fontSize: 28 }}>{SUBTYPE_ICON[viewingDoc.subtype] || "📄"}</div>
             <div style={{ minWidth: 0 }}>
@@ -435,11 +438,11 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
         </div>
 
         {/* Main content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", padding: "20px" }}>
           {/* Preview with toolbar */}
-          <div style={{ background: "#f9fafb", borderRadius: 12, marginBottom: 20, display: "flex", flexDirection: "column", minHeight: 240 }}>
+          <div style={{ background: "#f9fafb", borderRadius: 12, display: "flex", flexDirection: "column", minHeight: 0, flex: 1, overflow: "hidden" }}>
             {/* Toolbar */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #e5e7eb" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #e5e7eb", flexShrink: 0, minHeight: 48, height: 48 }}>
               {hasFileUrl && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button onClick={() => setZoom(Math.max(50, zoom - 10))} title="Zoom out" style={{
@@ -477,7 +480,7 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
             </div>
 
             {/* Preview content */}
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", overflow: "auto" }}>
+            <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflow: "hidden" }}>
               {hasFileUrl ? (
                 isImageUrl(viewingDoc.file_url) ? (
                   <img
@@ -508,9 +511,9 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
                 )
               ) : (
                 /* Placeholder when no file attached */
-                <div style={{ textAlign: "center", width: "100%" }}>
-                  <div style={{ fontSize: 72, marginBottom: 16 }}>{SUBTYPE_ICON[viewingDoc.subtype] || "📄"}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#9ca3af", marginBottom: 20 }}>No file attached</div>
+                <div style={{ textAlign: "center", width: "100%", padding: "16px" }}>
+                  <div style={{ fontSize: 42, marginBottom: 12 }}>{SUBTYPE_ICON[viewingDoc.subtype] || "📄"}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#9ca3af", marginBottom: 14 }}>No file attached</div>
                   <button
                     onClick={() => document.getElementById('upload-file-input')?.click()}
                     style={{
@@ -518,11 +521,11 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
                       color: "#fff",
                       border: "none",
                       borderRadius: 8,
-                      padding: "10px 20px",
-                      fontSize: 14,
+                      padding: "10px 18px",
+                      fontSize: 13,
                       fontWeight: 600,
                       cursor: "pointer",
-                      marginBottom: 32,
+                      marginBottom: 24,
                       transition: "all 0.15s"
                     }}
                     onMouseEnter={e => { e.target.style.background = "#1560a0"; }}
@@ -537,25 +540,25 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
                     background: "#fff",
                     border: "1px solid #e5e7eb",
                     borderRadius: 12,
-                    padding: "20px",
-                    maxWidth: "420px",
+                    padding: "16px",
+                    maxWidth: "400px",
                     margin: "0 auto",
                     textAlign: "left"
                   }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 16 }}>Document Summary</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>Document Summary</div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12 }}>
-                        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Reference</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", fontFamily: "monospace" }}>{viewingDoc.ref}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 10 }}>
+                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Reference</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", fontFamily: "monospace" }}>{viewingDoc.ref}</div>
                       </div>
-                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12 }}>
-                        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Date</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{fmtDate(viewingDoc.date)}</div>
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: 10 }}>
+                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Date</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>{fmtDate(viewingDoc.date)}</div>
                       </div>
                     </div>
 
-                    <div style={{ background: "#f9fafb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                    <div style={{ background: "#f9fafb", borderRadius: 8, padding: 10, marginBottom: 10 }}>
                       <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Party</div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{viewingDoc.party}</div>
                     </div>
@@ -578,56 +581,33 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
           </div>
 
           {/* Meta strip */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
-            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 14 }}>
-              <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Amount</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{fmt(viewingDoc.amount)}</div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 20, minHeight: 70, height: 70, flexShrink: 0 }}>
+            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Amount</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{fmt(viewingDoc.amount)}</div>
             </div>
-            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 14 }}>
-              <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Account Code</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", fontFamily: "monospace" }}>{viewingDoc.code}</div>
-              <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4 }}>{ACCOUNT_CODES.find(a => a.code === viewingDoc.code)?.label}</div>
+            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Account Code</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", fontFamily: "monospace" }}>{viewingDoc.code}</div>
             </div>
-            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 14 }}>
-              <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Company</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{company.short}</div>
-            </div>
-          </div>
-
-          {/* Lifecycle */}
-          <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Lifecycle</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
-              {lifecycleSteps.map((step, i) => {
-                const done = i < progress;
-                const active = i === progress;
-                return (
-                  <div key={step} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                      background: done ? "#10b981" : active ? "#3b82f6" : "#f3f4f6",
-                      color: done || active ? "#fff" : "#9ca3af",
-                      fontSize: 14, fontWeight: 700
-                    }}>{done ? "✓" : i + 1}</div>
-                    <div style={{ fontSize: 10, color: done ? "#065F46" : active ? "#1e40af" : "#9ca3af", textAlign: "center", fontWeight: active ? 600 : 400 }}>{step}</div>
-                  </div>
-                );
-              })}
+            <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 12, padding: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Company</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{company.short}</div>
             </div>
           </div>
         </div>
 
         {/* Action buttons */}
         {viewingDoc.status === "pending" || viewingDoc.status === "review" ? (
-          <div style={{ padding: "16px 20px", borderTop: "1px solid #e8eaf0", display: "flex", gap: 10 }}>
-            <button onClick={handleApprove} style={{ flex: 1, padding: "12px 0", background: "#10b981", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>✓ Approve</button>
-            <button onClick={handleReject} style={{ flex: 1, padding: "12px 0", background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>✗ Reject</button>
+          <div style={{ height: 56, display: "flex", gap: 10, flexShrink: 0, marginTop: 8 }}>
+            <button onClick={handleApprove} style={{ flex: 1, background: "#10b981", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>✓ Approve</button>
+            <button onClick={handleReject} style={{ flex: 1, background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>✗ Reject</button>
           </div>
         ) : null}
       </div>
 
       {/* Left sidebar - document list (desktop only) */}
-      <div style={{ width: 320, background: "#fff", borderLeft: "1px solid #e8eaf0", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ width: 280, background: "#fff", borderLeft: "1px solid #e8eaf0", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid #e8eaf0", fontWeight: 700, fontSize: 13, color: "#111827" }}>All documents</div>
         <div style={{ flex: 1, overflowY: "auto" }}>
           {docs.map(doc => (
@@ -636,18 +616,20 @@ function DocumentViewer({ docs, viewingDoc, setViewingDoc, setDocs, company, isM
               display: "flex",
               alignItems: "center",
               gap: 10,
-              padding: "12px 14px",
+              padding: "8px 14px",
+              minHeight: 48,
+              height: 48,
               background: viewingDoc.id === doc.id ? "#eff6ff" : "transparent",
               border: "none",
               cursor: "pointer",
               textAlign: "left",
             }}>
               <div style={{ fontSize: 16, flexShrink: 0 }}>{SUBTYPE_ICON[doc.subtype] || "📄"}</div>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.ref}</div>
-                <div style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.party}</div>
-                <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{fmt(doc.amount)}</div>
+                <div style={{ fontSize: 10, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.party}</div>
               </div>
+              <div style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: "#111827", whiteSpace: "nowrap" }}>{fmt(doc.amount)}</div>
             </button>
           ))}
         </div>
@@ -924,24 +906,49 @@ function Upload({ docs, setDocs }) {
   const [subtype, setSubtype] = useState("");
   const [party, setParty] = useState("");
   const [amount, setAmount] = useState("");
+  const [sstAmount, setSstAmount] = useState("0");
   const [code, setCode] = useState("");
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [ocrMessage, setOcrMessage] = useState("");
+  const [extractedFields, setExtractedFields] = useState({ party:false, amount:false, sstAmount:false });
   const [done, setDone] = useState(false);
   const fileRef = useRef();
 
-  function handleFile(e) {
+  async function handleFile(e) {
     const f = e.target.files[0];
     if (!f) return;
     setFile(f);
     setProcessing(true);
-    setTimeout(() => {
+    setOcrMessage("🔍 Compressing and reading document with AI...");
+    setExtractedFields({ party:false, amount:false, sstAmount:false });
+
+    try {
+      const compressed = await compressImage(f);
+      const result = await extractDocumentFields(compressed, docType);
+
+      const supplierName = result?.supplier_name || result?.merchant_name || "";
+      const totalAmount = result?.total_amount != null ? String(result.total_amount).trim() : "";
+      const sstValue = result?.sst_amount != null ? String(result.sst_amount).trim() : "";
+
+      setParty(supplierName || "");
+      setAmount(totalAmount || "");
+      setSstAmount(sstValue || "0");
+
+      const partyExtracted = Boolean(supplierName);
+      const amountExtracted = totalAmount !== "";
+      const sstExtracted = docType === "supplier" ? sstValue !== "" : false;
+
+      setExtractedFields({ party: partyExtracted, amount: amountExtracted, sstAmount: sstExtracted });
+      setOcrMessage(partyExtracted && amountExtracted ? "Fields extracted successfully" : "Some fields need manual entry");
+    } catch (error) {
+      console.error(error);
+      setOcrMessage("OCR extraction failed. Please complete fields manually.");
+    } finally {
       setProcessing(false);
-      setParty("Auto-detected: Pemasok Berjaya Sdn Bhd");
-      setAmount("12500");
       setStep(2);
-    }, 1800);
+    }
   }
 
   function submit() {
@@ -952,6 +959,7 @@ function Upload({ docs, setDocs }) {
       ref: docType === "supplier" ? `INV-2024-${900 + docs.length}` : `CLM-00${50 + docs.length}`,
       party: party.replace("Auto-detected: ", ""),
       amount: parseFloat(amount) || 0,
+      sstAmount: parseFloat(sstAmount) || 0,
       code,
       status: "pending",
       date: new Date().toISOString().slice(0, 10),
@@ -962,7 +970,21 @@ function Upload({ docs, setDocs }) {
     setDone(true);
   }
 
-  function reset() { setStep(1); setDocType(""); setSubtype(""); setParty(""); setAmount(""); setCode(""); setNotes(""); setFile(null); setDone(false); setProcessing(false); }
+  function reset() {
+    setStep(1);
+    setDocType("");
+    setSubtype("");
+    setParty("");
+    setAmount("");
+    setSstAmount("0");
+    setCode("");
+    setNotes("");
+    setFile(null);
+    setOcrMessage("");
+    setExtractedFields({ party:false, amount:false, sstAmount:false });
+    setDone(false);
+    setProcessing(false);
+  }
 
   const supplierSubtypes = ["Invoice", "Credit Note", "Debit Note"];
   const claimSubtypes    = ["Petrol", "Medical", "Telephone", "Entertainment"];
@@ -1075,17 +1097,40 @@ function Upload({ docs, setDocs }) {
             <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:8, padding:"10px 14px", marginBottom:20, fontSize:13, color:"#065F46" }}>
               ✨ OCR extracted fields automatically. Please verify and correct if needed.
             </div>
-            {[
-              { label:"Supplier / Staff name", val:party, set:setParty, placeholder:"Company or person name" },
-              { label:"Amount (RM)", val:amount, set:setAmount, placeholder:"0.00", type:"number" },
-              { label:"Notes (optional)", val:notes, set:setNotes, placeholder:"Any remarks…" },
-            ].map(f => (
-              <div key={f.label} style={{ marginBottom:16 }}>
-                <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"block", marginBottom:6 }}>{f.label}</label>
-                <input type={f.type||"text"} value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.placeholder}
-                  style={{ width:"100%", padding:"9px 12px", border:"1px solid #e8eaf0", borderRadius:8, fontSize:13, outline:"none", color:"#111827", background:"#fff", boxSizing:"border-box" }} />
+            {ocrMessage && (
+              <div style={{ marginBottom:16, fontSize:13, color: ocrMessage.includes("success") ? "#065F46" : "#374151" }}>
+                {ocrMessage}
               </div>
-            ))}
+            )}
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                Supplier / Staff name
+                {extractedFields.party && <span style={{ fontSize:11, color:"#047857", background:"#d1fae5", borderRadius:999, padding:"2px 6px" }}>✨ AI extracted</span>}
+              </label>
+              <input type="text" value={party} onChange={e => setParty(e.target.value)} placeholder="Company or person name"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e8eaf0", borderRadius:8, fontSize:13, outline:"none", color:"#111827", background:"#fff", boxSizing:"border-box" }} />
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                Amount (RM)
+                {extractedFields.amount && <span style={{ fontSize:11, color:"#047857", background:"#d1fae5", borderRadius:999, padding:"2px 6px" }}>✨ AI extracted</span>}
+              </label>
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e8eaf0", borderRadius:8, fontSize:13, outline:"none", color:"#111827", background:"#fff", boxSizing:"border-box" }} />
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                SST / Tax amount (RM)
+                {extractedFields.sstAmount && <span style={{ fontSize:11, color:"#047857", background:"#d1fae5", borderRadius:999, padding:"2px 6px" }}>✨ AI extracted</span>}
+              </label>
+              <input type="number" value={sstAmount} onChange={e => setSstAmount(e.target.value)} placeholder="0"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e8eaf0", borderRadius:8, fontSize:13, outline:"none", color:"#111827", background:"#fff", boxSizing:"border-box" }} />
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"block", marginBottom:6 }}>Notes (optional)</label>
+              <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any remarks…"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e8eaf0", borderRadius:8, fontSize:13, outline:"none", color:"#111827", background:"#fff", boxSizing:"border-box" }} />
+            </div>
             <div style={{ marginBottom:20 }}>
               <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"block", marginBottom:6 }}>Account code</label>
               <select value={code} onChange={e => setCode(e.target.value)}
@@ -1109,6 +1154,7 @@ function Upload({ docs, setDocs }) {
               ["Type", subtype],
               ["Party", party.replace("Auto-detected: ", "")],
               ["Amount", fmt(parseFloat(amount)||0)],
+              ["SST / Tax amount (RM)", fmt(parseFloat(sstAmount)||0)],
               ["Account code", code + " · " + (ACCOUNT_CODES.find(a=>a.code===code)?.label || "")],
               ["Notes", notes || "—"],
             ].map(([k, v]) => (
@@ -1433,12 +1479,22 @@ function AccountingSync({ docs, paymentRecords, setDocs, setPaymentRecords }) {
   const [software, setSoftware] = useState("autocount");
   const [invoiceExported, setInvoiceExported] = useState(false);
   const [paymentExported, setPaymentExported] = useState(false);
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState(null);
+  const [expandedPaymentId, setExpandedPaymentId] = useState(null);
+  const [invoiceForms, setInvoiceForms] = useState({});
+  const [paymentForms, setPaymentForms] = useState({});
 
   const supplierInvoices = docs.filter(doc => doc.type === "supplier" && doc.status === "approved");
+  const postedInvoices = supplierInvoices.filter(doc => doc.invoicePosted);
+  const invoiceProgress = supplierInvoices.length ? Math.round((postedInvoices.length / supplierInvoices.length) * 100) : 0;
+  const supplierAccountCodes = ACCOUNT_CODES.filter(a => a.type === "supplier" && a.code.startsWith("400-"));
+  const sortedInvoices = [...supplierInvoices].sort((a, b) => (a.invoicePosted === b.invoicePosted ? 0 : a.invoicePosted ? 1 : -1));
+
   const paidPayments = paymentRecords.filter(record => {
     const doc = docs.find(d => d.id === record.docId);
     return doc && doc.status === "paid";
   });
+  const sortedPayments = [...paidPayments].sort((a, b) => (a.posted === b.posted ? 0 : a.posted ? 1 : -1));
 
   const autoCountInvoiceXML = supplierInvoices.map(doc => `  <Invoice supplierCode="${doc.code}" invoiceRef="${doc.ref}" accountCode="${doc.code}" amount="${doc.amount}" date="${doc.date}"/>`).join("\n");
   const sqlInvoiceCSV = ["SupplierCode,SupplierName,InvoiceRef,AccountCode,Amount,Date", ...supplierInvoices.map(doc => `${doc.code},${doc.party},${doc.ref},${doc.code},${doc.amount},${doc.date}`)].join("\n");
@@ -1446,8 +1502,66 @@ function AccountingSync({ docs, paymentRecords, setDocs, setPaymentRecords }) {
   const autoCountPaymentXML = paidPayments.map(record => `  <Payment supplierCode="${record.supplierCode}" invoiceRef="${record.invoiceRef}" paymentRef="${record.paymentRef}" date="${record.paymentDate}" amount="${record.amount}" bank="${record.bank}"/>`).join("\n");
   const sqlPaymentCSV = ["SupplierCode,InvoiceRef,PaymentDate,Bank,Method,PaymentRef,Amount,Remarks", ...paidPayments.map(record => `${record.supplierCode},${record.invoiceRef},${record.paymentDate},${record.bank},${record.method},${record.paymentRef},${record.amount},${record.remarks || ""}`)].join("\n");
 
-  const markInvoicePosted = id => setDocs(current => current.map(doc => doc.id === id ? { ...doc, invoicePosted: true } : doc));
-  const markPaymentPosted = id => setPaymentRecords(current => current.map(record => record.id === id ? { ...record, posted: true } : record));
+  const defaultInvoiceForm = doc => ({
+    supplierCode: doc.code,
+    expenseAccountCode: "5100",
+    bankAccount: BANK_ACCOUNTS[0],
+    sstAmount: 0,
+    postingDate: new Date().toISOString().slice(0, 10),
+    narration: `Purchase - ${doc.party} - ${doc.ref}`,
+  });
+
+  const defaultPaymentForm = record => ({
+    bankAccount: record.bankAccount || `${record.bank} Current`,
+    method: record.method || PAYMENT_METHODS[0],
+    paymentRef: record.paymentRef || "",
+    paymentDate: record.paymentDate || new Date().toISOString().slice(0, 10),
+    amount: record.amount ?? 0,
+    narration: record.narration || `Payment - ${record.supplierName} - ${record.invoiceRef}`,
+  });
+
+  const invoiceForm = doc => invoiceForms[doc.id] || defaultInvoiceForm(doc);
+  const paymentForm = record => paymentForms[record.id] || defaultPaymentForm(record);
+
+  const toggleInvoice = doc => {
+    const nextId = expandedInvoiceId === doc.id ? null : doc.id;
+    setExpandedInvoiceId(nextId);
+    setExpandedPaymentId(null);
+    if (isMobile && nextId) window.scrollTo(0, 0);
+    if (!invoiceForms[doc.id]) {
+      setInvoiceForms(current => ({ ...current, [doc.id]: defaultInvoiceForm(doc) }));
+    }
+  };
+
+  const togglePayment = record => {
+    const nextId = expandedPaymentId === record.id ? null : record.id;
+    setExpandedPaymentId(nextId);
+    setExpandedInvoiceId(null);
+    if (isMobile && nextId) window.scrollTo(0, 0);
+    if (!paymentForms[record.id]) {
+      setPaymentForms(current => ({ ...current, [record.id]: defaultPaymentForm(record) }));
+    }
+  };
+
+  const updateInvoiceField = (doc, field, value) => {
+    setInvoiceForms(current => ({ ...current, [doc.id]: { ...invoiceForm(doc), [field]: value } }));
+  };
+
+  const updatePaymentField = (record, field, value) => {
+    setPaymentForms(current => ({ ...current, [record.id]: { ...paymentForm(record), [field]: value } }));
+  };
+
+  const markInvoicePosted = doc => {
+    const postedAt = new Date().toISOString();
+    setDocs(current => current.map(item => item.id === doc.id ? { ...item, invoicePosted: true, invoicePostedBy: "Lim Wei", invoicePostedAt: postedAt } : item));
+    setPaymentRecords(current => current.map(record => record.docId === doc.id ? { ...record, posted_invoice: true } : record));
+  };
+
+  const markPaymentPosted = record => {
+    const postedAt = new Date().toISOString();
+    setPaymentRecords(current => current.map(item => item.id === record.id ? { ...item, posted: true, posted_payment: true, postedBy: "Lim Wei", postedAt } : item));
+  };
+
   const viewSlip = record => {
     if (record.slipPreview) {
       window.open(record.slipPreview, "_blank");
@@ -1455,23 +1569,32 @@ function AccountingSync({ docs, paymentRecords, setDocs, setPaymentRecords }) {
       const url = URL.createObjectURL(record.slipFile);
       window.open(url, "_blank");
     } else {
-      alert("No slip available for this payment.");
+      alert("No slip attached");
     }
   };
+
+  const openInvoiceDoc = doc => setViewingDoc(doc);
 
   return (
     <div style={{ padding: "28px 32px", maxWidth: 1100 }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", margin: 0 }}>Accounting sync</h1>
-        <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>Post supplier invoices and payment entries for your accounting team.</p>
+        <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>Review and post supplier invoices and payment entries transaction by transaction.</p>
       </div>
 
       <div style={{ display: "grid", gap: 24 }}>
         <section style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "20px", borderBottom: "1px solid #f0f0f5" }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>TASK 1 — Post supplier invoices</div>
-            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>Export invoice posting entries for supplier accounts using 400-XXX codes.</div>
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>Review each approved supplier invoice before posting.</div>
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 13, color: "#374151" }}>{postedInvoices.length} of {supplierInvoices.length} invoices posted</div>
+              <div style={{ flex: 1, minWidth: 180, height: 10, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+                <div style={{ width: `${invoiceProgress}%`, height: "100%", background: "#1a6fbd", transition: "width .25s" }} />
+              </div>
+            </div>
           </div>
+
           <div style={{ padding: "20px", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <button onClick={() => { setInvoiceExported(true); setPaymentExported(false); }} style={{ padding: "11px 16px", background: "#1a6fbd", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>AutoCount XML</button>
             <button onClick={() => { setInvoiceExported(true); setPaymentExported(false); }} style={{ padding: "11px 16px", background: "#f3f4f6", color: "#111827", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>SQL Account CSV</button>
@@ -1479,32 +1602,89 @@ function AccountingSync({ docs, paymentRecords, setDocs, setPaymentRecords }) {
               <div style={{ color: "#065F46", fontWeight: 700 }}>Invoice export ready for accounts team.</div>
             )}
           </div>
+
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "#f9fafb" }}>
-                  {["Supplier code","Supplier name","Invoice ref","Amount","Account code",""].map(h => (
-                    <th key={h} style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
+                  {["Supplier code","Supplier","Invoice ref","Amount","Status"].map(h => (
+                    <th key={h} style={{ padding: "14px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {supplierInvoices.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ padding: "12px 14px", fontFamily: "monospace", color: "#111827" }}>{doc.code}</td>
-                    <td style={{ padding: "12px 14px", color: "#374151" }}>{doc.party}</td>
-                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 700 }}>{doc.ref}</td>
-                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 700 }}>{fmt(doc.amount)}</td>
-                    <td style={{ padding: "12px 14px", fontFamily: "monospace", color: "#374151" }}>{doc.code}</td>
-                    <td style={{ padding: "12px 14px" }}>
-                      <button onClick={() => markInvoicePosted(doc.id)} style={{ padding: "8px 14px", background: doc.invoicePosted ? "#d1fae5" : "#f3f4f6", color: doc.invoicePosted ? "#065F46" : "#111827", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>
-                        {doc.invoicePosted ? "Posted" : "Mark posted"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {sortedInvoices.map(doc => {
+                  const isOpen = expandedInvoiceId === doc.id;
+                  const form = invoiceForm(doc);
+                  return (
+                    <>
+                      <tr key={doc.id} onClick={() => toggleInvoice(doc)} style={{ cursor: "pointer", background: doc.invoicePosted ? "#f9fafb" : "transparent", opacity: doc.invoicePosted ? 0.65 : 1, borderBottom: "1px solid #f3f4f6" }}>
+                        <td style={{ padding: "14px 16px", fontFamily: "monospace", color: "#111827" }}>{doc.code}</td>
+                        <td style={{ padding: "14px 16px", color: "#374151" }}>{doc.party}</td>
+                        <td style={{ padding: "14px 16px", fontWeight: 700, color: "#111827" }}>{doc.ref}</td>
+                        <td style={{ padding: "14px 16px", fontWeight: 700, color: "#111827" }}>{fmt(doc.amount)}</td>
+                        <td style={{ padding: "14px 16px", color: "#065F46", fontWeight: 700 }}>{doc.invoicePosted ? "Posted ✓" : "Review"}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr key={`${doc.id}-details`}>
+                          <td colSpan={5} style={{ padding: 0, background: "#f8fafc" }}>
+                            <div style={{ display: isMobile ? "block" : "grid", gridTemplateColumns: isMobile ? "1fr" : "1.1fr 1fr", gap: 16, padding: "20px 24px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                                <div>
+                                  <button onClick={() => openInvoiceDoc(doc)} style={{ padding: "10px 16px", background: "#1a6fbd", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>View document</button>
+                                </div>
+                                {doc.invoicePosted && (
+                                  <div style={{ alignSelf: "center", fontSize: 12, color: "#065F46", fontWeight: 700, whiteSpace: "nowrap" }}>Posted ✓</div>
+                                )}
+                              </div>
+                              <div style={{ display: "grid", gap: 14 }}>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Supplier code</label>
+                                  <select value={form.supplierCode} onChange={e => updateInvoiceField(doc, "supplierCode", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }}>
+                                    {supplierAccountCodes.map(ac => <option key={ac.code} value={ac.code}>{ac.code} — {ac.label}</option>)}
+                                  </select>
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>GL / Expense account code</label>
+                                  <input value={form.expenseAccountCode} onChange={e => updateInvoiceField(doc, "expenseAccountCode", e.target.value)} placeholder="5100" style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Bank account</label>
+                                  <select value={form.bankAccount} onChange={e => updateInvoiceField(doc, "bankAccount", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }}>
+                                    {BANK_ACCOUNTS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+                                  </select>
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>SST amount</label>
+                                  <input type="number" value={form.sstAmount} onChange={e => updateInvoiceField(doc, "sstAmount", Number(e.target.value))} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Posting date</label>
+                                  <input type="date" value={form.postingDate} onChange={e => updateInvoiceField(doc, "postingDate", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Narration</label>
+                                  <input value={form.narration} onChange={e => updateInvoiceField(doc, "narration", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+                                  <button onClick={() => markInvoicePosted(doc)} disabled={doc.invoicePosted} style={{ padding: "11px 16px", background: doc.invoicePosted ? "#d1fae5" : "#1a6fbd", color: doc.invoicePosted ? "#065F46" : "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: doc.invoicePosted ? "default" : "pointer", opacity: doc.invoicePosted ? 0.7 : 1 }}>Post to AutoCount</button>
+                                  <button onClick={() => markInvoicePosted(doc)} disabled={doc.invoicePosted} style={{ padding: "11px 16px", background: "transparent", color: doc.invoicePosted ? "#065F46" : "#1a6fbd", border: `1px solid ${doc.invoicePosted ? "#d1fae5" : "#1a6fbd"}`, borderRadius: 10, fontWeight: 700, cursor: doc.invoicePosted ? "default" : "pointer", opacity: doc.invoicePosted ? 0.7 : 1 }}>Post to SQL Account</button>
+                                </div>
+                                {doc.invoicePosted && (
+                                  <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
+                                    Posted by {doc.invoicePostedBy} · {fmtDateTime(doc.invoicePostedAt)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
                 {supplierInvoices.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: "20px", color: "#9ca3af", textAlign: "center" }}>No supplier invoices ready for posting.</td></tr>
+                  <tr><td colSpan={5} style={{ padding: "20px", color: "#9ca3af", textAlign: "center" }}>No supplier invoices ready for posting.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1514,7 +1694,7 @@ function AccountingSync({ docs, paymentRecords, setDocs, setPaymentRecords }) {
         <section style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "20px", borderBottom: "1px solid #f0f0f5" }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>TASK 2 — Post payment entries (knock off creditors)</div>
-            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>Only paid documents appear here with bank slip review and posting controls.</div>
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>Review each payment entry before posting to accounting.</div>
           </div>
           <div style={{ padding: "20px", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <button onClick={() => { setPaymentExported(true); setInvoiceExported(false); }} style={{ padding: "11px 16px", background: "#1a6fbd", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>AutoCount XML</button>
@@ -1527,33 +1707,90 @@ function AccountingSync({ docs, paymentRecords, setDocs, setPaymentRecords }) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "#f9fafb" }}>
-                  {["Supplier code","Invoice ref","Payment date","Bank","Method","Ref no","Amount","",""].map(h => (
-                    <th key={h} style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
+                  {["Supplier code","Invoice ref","Payment date","Bank","Method","Ref no","Amount","Status"].map(h => (
+                    <th key={h} style={{ padding: "14px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {paidPayments.map(record => (
-                  <tr key={record.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ padding: "12px 14px", fontFamily: "monospace", color: "#111827" }}>{record.supplierCode}</td>
-                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.invoiceRef}</td>
-                    <td style={{ padding: "12px 14px", color: "#374151" }}>{fmtDate(record.paymentDate)}</td>
-                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.bank}</td>
-                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.method}</td>
-                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.paymentRef}</td>
-                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 700 }}>{fmt(record.amount)}</td>
-                    <td style={{ padding: "12px 14px" }}>
-                      <button onClick={() => viewSlip(record)} style={{ padding: "8px 14px", background: "#f3f4f6", color: "#111827", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>View slip</button>
-                    </td>
-                    <td style={{ padding: "12px 14px" }}>
-                      <button onClick={() => markPaymentPosted(record.id)} style={{ padding: "8px 14px", background: record.posted ? "#d1fae5" : "#f3f4f6", color: record.posted ? "#065F46" : "#111827", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>
-                        {record.posted ? "Posted" : "Mark posted"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {paidPayments.length === 0 && (
-                  <tr><td colSpan={10} style={{ padding: "20px", color: "#9ca3af", textAlign: "center" }}>No paid documents available for payment entry posting.</td></tr>
+                {sortedPayments.map(record => {
+                  const doc = docs.find(d => d.id === record.docId);
+                  const isOpen = expandedPaymentId === record.id;
+                  const form = paymentForm(record);
+                  return (
+                    <>
+                      <tr key={record.id} onClick={() => togglePayment(record)} style={{ cursor: "pointer", background: record.posted ? "#f9fafb" : "transparent", opacity: record.posted ? 0.65 : 1, borderBottom: "1px solid #f3f4f6" }}>
+                        <td style={{ padding: "14px 16px", fontFamily: "monospace", color: "#111827" }}>{record.supplierCode}</td>
+                        <td style={{ padding: "14px 16px", color: "#374151" }}>{record.invoiceRef}</td>
+                        <td style={{ padding: "14px 16px", color: "#374151" }}>{fmtDate(record.paymentDate)}</td>
+                        <td style={{ padding: "14px 16px", color: "#374151" }}>{record.bank}</td>
+                        <td style={{ padding: "14px 16px", color: "#374151" }}>{form.method}</td>
+                        <td style={{ padding: "14px 16px", color: "#374151" }}>{form.paymentRef}</td>
+                        <td style={{ padding: "14px 16px", fontWeight: 700, color: "#111827" }}>{fmt(form.amount)}</td>
+                        <td style={{ padding: "14px 16px", color: "#065F46", fontWeight: 700 }}>{record.posted ? "Posted ✓" : "Review"}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr key={`${record.id}-details`}>
+                          <td colSpan={8} style={{ padding: 0, background: "#f8fafc" }}>
+                            <div style={{ display: isMobile ? "block" : "grid", gridTemplateColumns: isMobile ? "1fr" : "1.1fr 1fr", gap: 16, padding: "20px 24px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                                <div style={{ display: "grid", gap: 8 }}>
+                                  <button onClick={() => doc && setViewingDoc(doc)} style={{ padding: "10px 16px", background: "#1a6fbd", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>View invoice</button>
+                                  <button onClick={() => viewSlip(record)} style={{ padding: "10px 16px", background: record.slipPreview || record.slipFile ? "#f3f4f6" : "#fde68a", color: "#111827", border: "none", borderRadius: 10, fontWeight: 700, cursor: record.slipPreview || record.slipFile ? "pointer" : "default" }}>
+                                    {record.slipPreview || record.slipFile ? "View bank slip" : "No slip attached"}
+                                  </button>
+                                </div>
+                                {record.posted && (
+                                  <div style={{ alignSelf: "center", fontSize: 12, color: "#065F46", fontWeight: 700, whiteSpace: "nowrap" }}>Posted ✓</div>
+                                )}
+                              </div>
+                              <div style={{ display: "grid", gap: 14 }}>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Bank account</label>
+                                  <select value={form.bankAccount} onChange={e => updatePaymentField(record, "bankAccount", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }}>
+                                    {BANK_ACCOUNTS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+                                  </select>
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Payment method</label>
+                                  <select value={form.method} onChange={e => updatePaymentField(record, "method", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }}>
+                                    {PAYMENT_METHODS.map(method => <option key={method} value={method}>{method}</option>)}
+                                  </select>
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Payment ref</label>
+                                  <input value={form.paymentRef} onChange={e => updatePaymentField(record, "paymentRef", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Payment date</label>
+                                  <input type="date" value={form.paymentDate} onChange={e => updatePaymentField(record, "paymentDate", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Amount paid</label>
+                                  <input type="number" value={form.amount} onChange={e => updatePaymentField(record, "amount", Number(e.target.value))} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Narration</label>
+                                  <input value={form.narration} onChange={e => updatePaymentField(record, "narration", e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+                                </div>
+                                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+                                  <button onClick={() => markPaymentPosted(record)} disabled={record.posted} style={{ padding: "11px 16px", background: record.posted ? "#d1fae5" : "#1a6fbd", color: record.posted ? "#065F46" : "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: record.posted ? "default" : "pointer", opacity: record.posted ? 0.7 : 1 }}>Post payment entry</button>
+                                </div>
+                                {record.posted && (
+                                  <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
+                                    Posted by {record.postedBy} · {fmtDateTime(record.postedAt)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+                {sortedPayments.length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: "20px", color: "#9ca3af", textAlign: "center" }}>No paid documents available for payment entry posting.</td></tr>
                 )}
               </tbody>
             </table>
@@ -2008,12 +2245,16 @@ export default function App() {
       amount: payment.amount,
       paymentDate: payment.paymentDate,
       bank: payment.bank,
+      bankAccount: `${payment.bank} Current`,
       method: payment.method,
       paymentRef: payment.paymentRef,
       remarks: payment.remarks,
+      narration: `Payment - ${doc.party} - ${doc.ref}`,
       slipFile: payment.slipFile,
       slipPreview: payment.slipPreview,
       posted: false,
+      posted_payment: false,
+      posted_invoice: false,
     }, ...current]);
     showToast("Payment marked as paid and accounts team has been notified.");
   };
@@ -2123,7 +2364,7 @@ export default function App() {
         {screen === "upload"     && <Upload     docs={docs} setDocs={setDocs} />}
         {screen === "approvals"  && <Approvals  docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
         {screen === "finance"    && <Finance    docs={docs} paymentRecords={paymentRecords} onSubmitPayment={handlePaymentSubmit} isMobile={isMobile} />}
-        {screen === "accounting" && <AccountingSync docs={docs} paymentRecords={paymentRecords} setDocs={setDocs} setPaymentRecords={setPaymentRecords} />}
+        {screen === "accounting" && <AccountingSync docs={docs} paymentRecords={paymentRecords} setDocs={setDocs} setPaymentRecords={setPaymentRecords} setViewingDoc={setViewingDoc} isMobile={isMobile} />}
         {screen === "users"      && <UserManagement members={members} setMembers={setMembers} company={company} />}
         {screen === "pricing"    && <Pricing />}
         {screen === "settings"   && <Settings companies={COMPANIES} company={company} setCompany={setCompany} />}
