@@ -941,10 +941,14 @@ function Upload({ docs, setDocs }) {
       const sstExtracted = docType === "supplier" ? sstValue !== "" : false;
 
       setExtractedFields({ party: partyExtracted, amount: amountExtracted, sstAmount: sstExtracted });
-      setOcrMessage(partyExtracted && amountExtracted ? "Fields extracted successfully" : "Some fields need manual entry");
+      if (!partyExtracted && !amountExtracted) {
+        setOcrMessage("Could not auto-extract — please fill manually");
+      } else {
+        setOcrMessage(partyExtracted && amountExtracted ? "Fields extracted successfully" : "Some fields need manual entry");
+      }
     } catch (error) {
       console.error(error);
-      setOcrMessage("OCR extraction failed. Please complete fields manually.");
+      setOcrMessage("Could not auto-extract — please fill manually");
     } finally {
       setProcessing(false);
       setStep(2);
@@ -1098,7 +1102,15 @@ function Upload({ docs, setDocs }) {
               ✨ OCR extracted fields automatically. Please verify and correct if needed.
             </div>
             {ocrMessage && (
-              <div style={{ marginBottom:16, fontSize:13, color: ocrMessage.includes("success") ? "#065F46" : "#374151" }}>
+              <div style={{
+                marginBottom:16,
+                padding:"10px 14px",
+                borderRadius:8,
+                fontSize:13,
+                background: ocrMessage.includes("Could not auto-extract") ? "#fffbeb" : ocrMessage.includes("success") ? "#ecfdf5" : "#f8fafc",
+                border: ocrMessage.includes("Could not auto-extract") ? "1px solid #f59e0b" : ocrMessage.includes("success") ? "1px solid #10b981" : "1px solid #e5e7eb",
+                color: ocrMessage.includes("Could not auto-extract") ? "#b45309" : ocrMessage.includes("success") ? "#065F46" : "#374151"
+              }}>
                 {ocrMessage}
               </div>
             )}
