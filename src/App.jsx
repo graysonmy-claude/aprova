@@ -92,6 +92,16 @@ const INITIAL_MEMBERS = [
   { id: 4, name: "Lim Wei", email: "lim.wei@aprova.com", role: "Staff", permissions: { ...ROLE_DEFAULTS.Staff }, notifications: { email:false, telegram:false, whatsapp:true } },
 ];
 
+const PAYMENT_BANKS = ["Maybank", "CIMB", "Public Bank", "RHB", "Hong Leong"];
+const PAYMENT_METHODS = ["Online Transfer", "TT", "Cheque", "Cash"];
+
+const SAMPLE_PAYMENT_HISTORY = [
+  { supplierCode: "400-P001", supplierName: "Pemasok Berjaya Sdn Bhd", invoiceRef: "INV-2024-0892", paymentRef: "TT-001", date: "2024-10-14", amount: 12500, bank: "Maybank", method: "TT" },
+  { supplierCode: "400-T001", supplierName: "Teknologi Utama Sdn Bhd", invoiceRef: "CN-2024-0034", paymentRef: "OT-002", date: "2024-10-12", amount: 1800, bank: "CIMB", method: "Online Transfer" },
+  { supplierCode: "400-G001", supplierName: "Global Supply Sdn Bhd", invoiceRef: "INV-2024-0901", paymentRef: "CH-123", date: "2024-10-11", amount: 22000, bank: "Public Bank", method: "Cheque" },
+  { supplierCode: "400-P001", supplierName: "Pemasok Berjaya Sdn Bhd", invoiceRef: "INV-2024-0892", paymentRef: "TT-000", date: "2024-10-05", amount: 12500, bank: "Maybank", method: "TT" },
+];
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function Badge({ status }) {
@@ -1166,140 +1176,396 @@ function Approvals({ docs, setDocs, setViewingDoc }) {
   );
 }
 
-function Finance({ docs, setDocs, setViewingDoc }) {
+function Finance({ docs, paymentRecords, onSubmitPayment, isMobile }) {
   const ready = docs.filter(d => d.status === "approved" && d.type === "supplier");
-  const [paid, setPaid] = useState([]);
+  const [selectedDoc, setSelectedDoc] = useState(ready[0] || null);
+  const [paymentForm, setPaymentForm] = useState({
+    paymentDate: new Date().toISOString().slice(0, 10),
+    bank: PAYMENT_BANKS[0],
+    method: PAYMENT_METHODS[0],
+    paymentRef: "",
+    amount: ready[0]?.amount || "",
+    remarks: "",
+    slipFile: null,
+    slipPreview: null,
+  });
+  const [showOverlay, setShowOverlay] = useState(false);
 
-  function markPaid(id) { setPaid(p => [...p, id]); setDocs(ds => ds.map(d => d.id===id ? {...d, status:"synced"} : d)); }
+  useEffect(() => {
+    if (!selectedDoc && ready[0]) {
+      setSelectedDoc(ready[0]);
+    }
+    if (selectedDoc && !ready.some(doc => doc.id === selectedDoc.id)) {
+      setSelectedDoc(ready[0] || null);
+    }
+  }, [ready, selectedDoc]);
 
-  const total = ready.reduce((s, d) => s + d.amount, 0);
+  useEffect(() => {
+    if (selectedDoc) {
+      setPaymentForm(current => ({
+        ...current,
+        amount: selectedDoc.amount,
+      }));
+    }
+  }, [selectedDoc]);
 
-  return (
-    <div style={{ padding:"28px 32px", maxWidth:900 }}>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22, fontWeight:700, color:"#111827", margin:0 }}>Finance / Bank maker</h1>
-        <p style={{ fontSize:13, color:"#6b7280", margin:"4px 0 0" }}>Approved supplier documents ready for payment processing</p>
-      </div>
+  const historyForSupplier = selectedDoc ? [...SAMPLE_PAYMENT_HISTORY, ...paymentRecords]
+    .filter(record => record.supplierCode === selectedDoc.code)
+    .sort((a, b) => new Date(b.paymentDate || b.date) - new Date(a.paymentDate || a.date))
+    .slice(0, 5) : [];
 
-      <div style={{ display:"flex", gap:12, marginBottom:20 }}>
-        <StatCard label="Ready for payment" value={ready.length} />
-        <StatCard label="Total payable" value={fmt(total)} />
-        <StatCard label="Processed today" value={paid.length} sub="Bank transfers initiated" subColor="#065F46" />
-      </div>
+  const duplicateRecent = selectedDoc && paymentForm.paymentDate ? historyForSupplier.some(record => {
+    const recordDate = record.paymentDate || record.date;
+    const days = (new Date(paymentForm.paymentDate) - new Date(recordDate)) / (1000 * 60 * 60 * 24);
+    return Math.abs((record.amount || 0) - Number(paymentForm.amount)) <= 20 && days >= 0 && days <= 7;
+  }) : false;
 
-      <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:14, overflow:"hidden" }}>
-        <div style={{ padding:"14px 20px", borderBottom:"1px solid #f0f0f5", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <span style={{ fontWeight:600, fontSize:14, color:"#111827" }}>Payment queue</span>
-          <button style={{ padding:"7px 16px", background:"#1a6fbd", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
-            Export to bank portal
-          </button>
+  const handleFile = event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    setPaymentForm(current => ({ ...current, slipFile: file, slipPreview: preview }));
+  };
+
+  const handleSubmit = () => {
+    if (!selectedDoc) return;
+    onSubmitPayment(selectedDoc, {
+      paymentDate: paymentForm.paymentDate,
+      bank: paymentForm.bank,
+      method: paymentForm.method,
+      paymentRef: paymentForm.paymentRef,
+      amount: Number(paymentForm.amount),
+      remarks: paymentForm.remarks,
+      slipFile: paymentForm.slipFile,
+      slipPreview: paymentForm.slipPreview,
+    });
+    setShowOverlay(false);
+  };
+
+  const selectedInfo = selectedDoc ? [{ label: "Supplier code", value: selectedDoc.code }, { label: "Invoice ref", value: selectedDoc.ref }, { label: "Amount", value: fmt(selectedDoc.amount) }, { label: "Supplier", value: selectedDoc.party }] : [];
+  const total = ready.reduce((sum, doc) => sum + doc.amount, 0);
+
+  const paymentPanel = selectedDoc ? (
+    <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 520 }}>
+      <div style={{ padding: "20px", borderBottom: "1px solid #f0f0f5", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{selectedDoc.party}</div>
+          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>{selectedDoc.code} · {selectedDoc.ref}</div>
         </div>
-        {ready.length === 0 ? (
-          <div style={{ padding:40, textAlign:"center", color:"#9ca3af" }}>No approved supplier documents pending payment.</div>
-        ) : ready.map(doc => (
-          <div key={doc.id} onClick={() => setViewingDoc(doc)} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 20px", borderBottom:"1px solid #f9fafb", cursor:"pointer" }}>
-            <div style={{ fontSize:24 }}>{SUBTYPE_ICON[doc.subtype]}</div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:600, color:"#111827" }}>{doc.party}</div>
-              <div style={{ fontSize:11, color:"#6b7280" }}>{doc.ref} · {fmtDate(doc.date)}</div>
-            </div>
-            <div style={{ textAlign:"right", marginRight:16 }}>
-              <div style={{ fontSize:14, fontWeight:700, color:"#111827" }}>{fmt(doc.amount)}</div>
-              <div style={{ fontFamily:"monospace", fontSize:11, color:"#6b7280" }}>{doc.code}</div>
-            </div>
-            {paid.includes(doc.id) ? (
-              <span style={{ background:"#d1fae5", color:"#065F46", fontSize:12, fontWeight:600, padding:"5px 12px", borderRadius:8 }}>✓ Processed</span>
-            ) : (
-              <button onClick={() => markPaid(doc.id)} style={{ padding:"7px 14px", background:"#f0fdf4", color:"#065F46", border:"1.5px solid #bbf7d0", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                Mark paid
-              </button>
-            )}
+        {isMobile && (
+          <button onClick={() => setShowOverlay(false)} style={{ border: "none", background: "transparent", color: "#6b7280", fontSize: 22, cursor: "pointer" }}>×</button>
+        )}
+      </div>
+
+      <div style={{ padding: "20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {selectedInfo.map(item => (
+          <div key={item.label} style={{ background: "#f8fafc", borderRadius: 12, padding: 14 }}>
+            <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{item.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{item.value}</div>
           </div>
         ))}
       </div>
+
+      <div style={{ padding: "0 20px 20px" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 12 }}>Last payments to this supplier</div>
+        {historyForSupplier.length === 0 ? (
+          <div style={{ padding: 16, background: "#f9fafb", borderRadius: 12, color: "#6b7280" }}>No recent payments found.</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#f3f4f6" }}>
+                  { ["Date","Method","Amount","Ref","Bank"].map(h => (
+                    <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {historyForSupplier.map(payment => {
+                  const paymentDate = payment.paymentDate || payment.date;
+                  return (
+                    <tr key={`${payment.paymentRef}-${paymentDate}`}>
+                      <td style={{ padding: "10px 12px", color: "#374151" }}>{fmtDate(paymentDate)}</td>
+                      <td style={{ padding: "10px 12px", color: "#374151" }}>{payment.method}</td>
+                      <td style={{ padding: "10px 12px", color: "#111827", fontWeight: 700 }}>{fmt(payment.amount)}</td>
+                      <td style={{ padding: "10px 12px", color: "#374151" }}>{payment.paymentRef}</td>
+                      <td style={{ padding: "10px 12px", color: "#374151" }}>{payment.bank}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {duplicateRecent && (
+          <div style={{ marginTop: 14, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: 14, color: "#991b1b" }}>
+            ⚠️ Similar amount was paid within the last 7 days to this supplier. Please verify before submitting.
+          </div>
+        )}
+
+        <div style={{ marginTop: 24, display: "grid", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#374151" }}>
+              Payment date
+              <input type="date" value={paymentForm.paymentDate} onChange={e => setPaymentForm(c => ({ ...c, paymentDate: e.target.value }))}
+                style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+            </label>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#374151" }}>
+              Bank
+              <select value={paymentForm.bank} onChange={e => setPaymentForm(c => ({ ...c, bank: e.target.value }))}
+                style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }}>
+                {PAYMENT_BANKS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#374151" }}>
+              Method
+              <select value={paymentForm.method} onChange={e => setPaymentForm(c => ({ ...c, method: e.target.value }))}
+                style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }}>
+                {PAYMENT_METHODS.map(method => <option key={method} value={method}>{method}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#374151" }}>
+              Reference number
+              <input value={paymentForm.paymentRef} onChange={e => setPaymentForm(c => ({ ...c, paymentRef: e.target.value }))} placeholder="TT-001"
+                style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#374151" }}>
+              Amount paid (RM)
+              <input type="number" value={paymentForm.amount} onChange={e => setPaymentForm(c => ({ ...c, amount: e.target.value }))}
+                style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+            </label>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#374151" }}>
+              Remarks
+              <input value={paymentForm.remarks} onChange={e => setPaymentForm(c => ({ ...c, remarks: e.target.value }))} placeholder="Notes for accounts"
+                style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8eaf0", background: "#fff", color: "#111827" }} />
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <label style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Bank slip upload</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <button onClick={() => document.getElementById("bank-slip-input")?.click()} style={{ padding: "11px 16px", background: "#f3f4f6", border: "1px solid #e8eaf0", borderRadius: 10, cursor: "pointer", color: "#374151" }}>
+                Upload PDF / JPG / PNG
+              </button>
+              <span style={{ fontSize: 12, color: "#6b7280" }}>{paymentForm.slipFile ? paymentForm.slipFile.name : "No file selected"}</span>
+            </div>
+            <input id="bank-slip-input" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFile} style={{ display: "none" }} />
+            {paymentForm.slipPreview && (
+              <div style={{ maxWidth: 220, borderRadius: 12, overflow: "hidden", border: "1px solid #e8eaf0" }}>
+                <img src={paymentForm.slipPreview} alt="Bank slip preview" style={{ width: "100%", display: "block" }} />
+              </div>
+            )}
+          </div>
+
+          <button onClick={handleSubmit} style={{ width: "100%", padding: "14px 0", background: "#10b981", color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+            Mark as paid & notify accounts
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div style={{ padding: 24, color: "#6b7280" }}>Select a supplier document to start payment processing.</div>
+  );
+
+  return (
+    <div style={{ padding: isMobile ? "16px 12px" : "28px 32px", minHeight: "100vh" }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", margin: 0 }}>Finance / Supplier payments</h1>
+        <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>Process supplier payments and notify accounts when marking a document as paid.</p>
+      </div>
+
+      <div style={{ display: isMobile ? "block" : "grid", gridTemplateColumns: "1.1fr 1.8fr", gap: 16 }}>
+        <div style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "20px", borderBottom: "1px solid #f0f0f5", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Approved supplier documents</div>
+              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>Click a row to open payment details.</div>
+            </div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>{ready.length} document{ready.length !== 1 ? "s" : ""}</div>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#f9fafb" }}>
+                  { ["Supplier code","Supplier","Invoice ref","Amount",""].map(h => (
+                    <th key={h} style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ready.map(doc => (
+                  <tr key={doc.id} onClick={() => { setSelectedDoc(doc); if (isMobile) setShowOverlay(true); }} style={{ cursor: "pointer", borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "12px 14px", fontFamily: "monospace", color: "#111827" }}>{doc.code}</td>
+                    <td style={{ padding: "12px 14px", color: "#374151" }}>{doc.party}</td>
+                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 600 }}>{doc.ref}</td>
+                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 700 }}>{fmt(doc.amount)}</td>
+                    <td style={{ padding: "12px 14px", color: "#1a6fbd", fontWeight: 600 }}>Open</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {ready.length === 0 && (
+              <div style={{ padding: 24, color: "#9ca3af" }}>No approved supplier invoices available for payment.</div>
+            )}
+          </div>
+        </div>
+
+        {!isMobile ? paymentPanel : null}
+      </div>
+
+      {isMobile && showOverlay && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "#fff", overflowY: "auto", padding: 20 }}>
+          {paymentPanel}
+        </div>
+      )}
     </div>
   );
 }
 
-function AccountingSync({ docs }) {
+function AccountingSync({ docs, paymentRecords, setDocs, setPaymentRecords }) {
   const [software, setSoftware] = useState("autocount");
-  const [exported, setExported] = useState(false);
-  const syncable = docs.filter(d => d.status === "approved" || d.status === "synced");
+  const [invoiceExported, setInvoiceExported] = useState(false);
+  const [paymentExported, setPaymentExported] = useState(false);
+
+  const supplierInvoices = docs.filter(doc => doc.type === "supplier" && doc.status === "approved");
+  const paidPayments = paymentRecords.filter(record => {
+    const doc = docs.find(d => d.id === record.docId);
+    return doc && doc.status === "paid";
+  });
+
+  const autoCountInvoiceXML = supplierInvoices.map(doc => `  <Invoice supplierCode="${doc.code}" invoiceRef="${doc.ref}" accountCode="${doc.code}" amount="${doc.amount}" date="${doc.date}"/>`).join("\n");
+  const sqlInvoiceCSV = ["SupplierCode,SupplierName,InvoiceRef,AccountCode,Amount,Date", ...supplierInvoices.map(doc => `${doc.code},${doc.party},${doc.ref},${doc.code},${doc.amount},${doc.date}`)].join("\n");
+
+  const autoCountPaymentXML = paidPayments.map(record => `  <Payment supplierCode="${record.supplierCode}" invoiceRef="${record.invoiceRef}" paymentRef="${record.paymentRef}" date="${record.paymentDate}" amount="${record.amount}" bank="${record.bank}"/>`).join("\n");
+  const sqlPaymentCSV = ["SupplierCode,InvoiceRef,PaymentDate,Bank,Method,PaymentRef,Amount,Remarks", ...paidPayments.map(record => `${record.supplierCode},${record.invoiceRef},${record.paymentDate},${record.bank},${record.method},${record.paymentRef},${record.amount},${record.remarks || ""}`)].join("\n");
+
+  const markInvoicePosted = id => setDocs(current => current.map(doc => doc.id === id ? { ...doc, invoicePosted: true } : doc));
+  const markPaymentPosted = id => setPaymentRecords(current => current.map(record => record.id === id ? { ...record, posted: true } : record));
+  const viewSlip = record => {
+    if (record.slipPreview) {
+      window.open(record.slipPreview, "_blank");
+    } else if (record.slipFile) {
+      const url = URL.createObjectURL(record.slipFile);
+      window.open(url, "_blank");
+    } else {
+      alert("No slip available for this payment.");
+    }
+  };
 
   return (
-    <div style={{ padding:"28px 32px", maxWidth:900 }}>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22, fontWeight:700, color:"#111827", margin:0 }}>Accounting sync</h1>
-        <p style={{ fontSize:13, color:"#6b7280", margin:"4px 0 0" }}>Export approved documents to your accounting software</p>
+    <div style={{ padding: "28px 32px", maxWidth: 1100 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", margin: 0 }}>Accounting sync</h1>
+        <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>Post supplier invoices and payment entries for your accounting team.</p>
       </div>
 
-      <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:14, padding:24, marginBottom:16 }}>
-        <div style={{ fontWeight:600, fontSize:14, color:"#111827", marginBottom:14 }}>Select accounting software</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:20 }}>
-          {[{k:"autocount",label:"AutoCount",desc:"XML / CSV import template",icon:"🔵"},{k:"sql",label:"SQL Account",desc:"CSV import wizard",icon:"🟠"}].map(opt => (
-            <div key={opt.k} onClick={() => { setSoftware(opt.k); setExported(false); }}
-              style={{ border:`2px solid ${software===opt.k ? "#1a6fbd":"#e8eaf0"}`, borderRadius:10, padding:16, cursor:"pointer", background: software===opt.k ? "#eff6ff":"#fff" }}>
-              <div style={{ fontSize:24, marginBottom:6 }}>{opt.icon}</div>
-              <div style={{ fontSize:14, fontWeight:700, color:"#111827" }}>{opt.label}</div>
-              <div style={{ fontSize:12, color:"#6b7280" }}>{opt.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background:"#f9fafb", borderRadius:10, padding:16, marginBottom:20 }}>
-          <div style={{ fontWeight:600, fontSize:13, color:"#374151", marginBottom:8 }}>Export preview — {syncable.length} documents</div>
-          <div style={{ fontFamily:"monospace", fontSize:11, color:"#374151" }}>
-            {software === "autocount" ? (
-              <>
-                <div style={{ color:"#6b7280" }}>&lt;?xml version="1.0"?&gt;</div>
-                <div>&lt;AutoCountImport&gt;</div>
-                {syncable.slice(0,3).map(d => (
-                  <div key={d.id} style={{ paddingLeft:12 }}>
-                    &lt;Journal ref="{d.ref}" acc="{d.code}" amount="{d.amount}" date="{d.date}"/&gt;
-                  </div>
-                ))}
-                {syncable.length > 3 && <div style={{ paddingLeft:12, color:"#9ca3af" }}>… {syncable.length - 3} more entries</div>}
-                <div>&lt;/AutoCountImport&gt;</div>
-              </>
-            ) : (
-              <>
-                <div style={{ color:"#6b7280" }}>DocRef,Date,Account,Description,Amount</div>
-                {syncable.slice(0,3).map(d => (
-                  <div key={d.id}>{d.ref},{d.date},{d.code},{d.subtype} - {d.party},{d.amount}</div>
-                ))}
-                {syncable.length > 3 && <div style={{ color:"#9ca3af" }}>… {syncable.length - 3} more rows</div>}
-              </>
+      <div style={{ display: "grid", gap: 24 }}>
+        <section style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "20px", borderBottom: "1px solid #f0f0f5" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>TASK 1 — Post supplier invoices</div>
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>Export invoice posting entries for supplier accounts using 400-XXX codes.</div>
+          </div>
+          <div style={{ padding: "20px", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <button onClick={() => { setInvoiceExported(true); setPaymentExported(false); }} style={{ padding: "11px 16px", background: "#1a6fbd", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>AutoCount XML</button>
+            <button onClick={() => { setInvoiceExported(true); setPaymentExported(false); }} style={{ padding: "11px 16px", background: "#f3f4f6", color: "#111827", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>SQL Account CSV</button>
+            {invoiceExported && (
+              <div style={{ color: "#065F46", fontWeight: 700 }}>Invoice export ready for accounts team.</div>
             )}
           </div>
-        </div>
-
-        {exported ? (
-          <div style={{ background:"#d1fae5", border:"1px solid #bbf7d0", borderRadius:8, padding:"12px 16px", fontSize:13, color:"#065F46", fontWeight:600 }}>
-            ✅ Export file generated. Share with your accounts team to import into {software === "autocount" ? "AutoCount" : "SQL Account"}.
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#f9fafb" }}>
+                  {["Supplier code","Supplier name","Invoice ref","Amount","Account code",""].map(h => (
+                    <th key={h} style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {supplierInvoices.map(doc => (
+                  <tr key={doc.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "12px 14px", fontFamily: "monospace", color: "#111827" }}>{doc.code}</td>
+                    <td style={{ padding: "12px 14px", color: "#374151" }}>{doc.party}</td>
+                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 700 }}>{doc.ref}</td>
+                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 700 }}>{fmt(doc.amount)}</td>
+                    <td style={{ padding: "12px 14px", fontFamily: "monospace", color: "#374151" }}>{doc.code}</td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <button onClick={() => markInvoicePosted(doc.id)} style={{ padding: "8px 14px", background: doc.invoicePosted ? "#d1fae5" : "#f3f4f6", color: doc.invoicePosted ? "#065F46" : "#111827", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>
+                        {doc.invoicePosted ? "Posted" : "Mark posted"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {supplierInvoices.length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: "20px", color: "#9ca3af", textAlign: "center" }}>No supplier invoices ready for posting.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          <button onClick={() => setExported(true)} style={{ width:"100%", padding:"11px 0", background:"#1a6fbd", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:600, cursor:"pointer" }}>
-            Generate {software === "autocount" ? "XML" : "CSV"} export file
-          </button>
-        )}
-      </div>
+        </section>
 
-      <div style={{ background:"#fff", border:"1px solid #e8eaf0", borderRadius:14, overflow:"hidden" }}>
-        <div style={{ padding:"14px 20px", borderBottom:"1px solid #f0f0f5" }}>
-          <span style={{ fontWeight:600, fontSize:14, color:"#111827" }}>Account code summary</span>
-        </div>
-        {ACCOUNT_CODES.map(ac => {
-          const count = syncable.filter(d => d.code === ac.code).length;
-          const total = syncable.filter(d => d.code === ac.code).reduce((s,d) => s + d.amount, 0);
-          return (
-            <div key={ac.code} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px", borderBottom:"1px solid #f9fafb" }}>
-              <span style={{ fontFamily:"monospace", fontSize:12, background:"#f3f4f6", padding:"2px 8px", borderRadius:5, color:"#374151", flexShrink:0 }}>{ac.code}</span>
-              <span style={{ flex:1, fontSize:13, color:"#374151" }}>{ac.label}</span>
-              <span style={{ fontSize:12, color:"#6b7280" }}>{count} doc{count!==1?"s":""}</span>
-              <span style={{ fontSize:13, fontWeight:600, color:"#111827", minWidth:100, textAlign:"right" }}>{count > 0 ? fmt(total) : "—"}</span>
+        <section style={{ background: "#fff", border: "1px solid #e8eaf0", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "20px", borderBottom: "1px solid #f0f0f5" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>TASK 2 — Post payment entries (knock off creditors)</div>
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>Only paid documents appear here with bank slip review and posting controls.</div>
+          </div>
+          <div style={{ padding: "20px", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <button onClick={() => { setPaymentExported(true); setInvoiceExported(false); }} style={{ padding: "11px 16px", background: "#1a6fbd", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>AutoCount XML</button>
+            <button onClick={() => { setPaymentExported(true); setInvoiceExported(false); }} style={{ padding: "11px 16px", background: "#f3f4f6", color: "#111827", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>SQL Account CSV</button>
+            {paymentExported && (
+              <div style={{ color: "#065F46", fontWeight: 700 }}>Payment export ready for accounts team.</div>
+            )}
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#f9fafb" }}>
+                  {["Supplier code","Invoice ref","Payment date","Bank","Method","Ref no","Amount","",""].map(h => (
+                    <th key={h} style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#374151" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paidPayments.map(record => (
+                  <tr key={record.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "12px 14px", fontFamily: "monospace", color: "#111827" }}>{record.supplierCode}</td>
+                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.invoiceRef}</td>
+                    <td style={{ padding: "12px 14px", color: "#374151" }}>{fmtDate(record.paymentDate)}</td>
+                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.bank}</td>
+                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.method}</td>
+                    <td style={{ padding: "12px 14px", color: "#374151" }}>{record.paymentRef}</td>
+                    <td style={{ padding: "12px 14px", color: "#111827", fontWeight: 700 }}>{fmt(record.amount)}</td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <button onClick={() => viewSlip(record)} style={{ padding: "8px 14px", background: "#f3f4f6", color: "#111827", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>View slip</button>
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <button onClick={() => markPaymentPosted(record.id)} style={{ padding: "8px 14px", background: record.posted ? "#d1fae5" : "#f3f4f6", color: record.posted ? "#065F46" : "#111827", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>
+                        {record.posted ? "Posted" : "Mark posted"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {paidPayments.length === 0 && (
+                  <tr><td colSpan={10} style={{ padding: "20px", color: "#9ca3af", textAlign: "center" }}>No paid documents available for payment entry posting.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ background: "#f9fafb", borderRadius: 12, padding: 16, margin: "20px" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Sample payment XML format</div>
+            <div style={{ fontFamily: "monospace", fontSize: 12, color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+              &lt;Payment supplierCode="400-P001" invoiceRef="INV-2024-0892" paymentRef="TT-001" date="2024-10-18" amount="12500" bank="Maybank"/&gt;
             </div>
-          );
-        })}
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -1710,8 +1976,10 @@ export default function App() {
   const [screen, setScreen] = useState("dashboard");
   const [company, setCompany] = useState(COMPANIES[0]);
   const [docs, setDocs] = useState(INITIAL_DOCS);
+  const [paymentRecords, setPaymentRecords] = useState([]);
   const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [toast, setToast] = useState(null);
   const [coOpen, setCoOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
@@ -1722,6 +1990,33 @@ export default function App() {
     setIsMobile(media.matches);
     return () => media.removeEventListener("change", listener);
   }, []);
+
+  const showToast = message => {
+    setToast(message);
+    window.clearTimeout(window.__aprovaToastTimeout);
+    window.__aprovaToastTimeout = window.setTimeout(() => setToast(null), 4200);
+  };
+
+  const handlePaymentSubmit = (doc, payment) => {
+    setDocs(current => current.map(d => d.id === doc.id ? { ...d, status: "paid" } : d));
+    setPaymentRecords(current => [{
+      id: Date.now(),
+      docId: doc.id,
+      supplierCode: doc.code,
+      supplierName: doc.party,
+      invoiceRef: doc.ref,
+      amount: payment.amount,
+      paymentDate: payment.paymentDate,
+      bank: payment.bank,
+      method: payment.method,
+      paymentRef: payment.paymentRef,
+      remarks: payment.remarks,
+      slipFile: payment.slipFile,
+      slipPreview: payment.slipPreview,
+      posted: false,
+    }, ...current]);
+    showToast("Payment marked as paid and accounts team has been notified.");
+  };
 
   const pendingCount = docs.filter(d => d.status === "pending").length;
 
@@ -1827,8 +2122,8 @@ export default function App() {
         {screen === "documents"  && <Documents  docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
         {screen === "upload"     && <Upload     docs={docs} setDocs={setDocs} />}
         {screen === "approvals"  && <Approvals  docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
-        {screen === "finance"    && <Finance    docs={docs} setDocs={setDocs} setViewingDoc={setViewingDoc} />}
-        {screen === "accounting" && <AccountingSync docs={docs} />}
+        {screen === "finance"    && <Finance    docs={docs} paymentRecords={paymentRecords} onSubmitPayment={handlePaymentSubmit} isMobile={isMobile} />}
+        {screen === "accounting" && <AccountingSync docs={docs} paymentRecords={paymentRecords} setDocs={setDocs} setPaymentRecords={setPaymentRecords} />}
         {screen === "users"      && <UserManagement members={members} setMembers={setMembers} company={company} />}
         {screen === "pricing"    && <Pricing />}
         {screen === "settings"   && <Settings companies={COMPANIES} company={company} setCompany={setCompany} />}
@@ -1848,6 +2143,13 @@ export default function App() {
               <span style={{ fontSize: 9, fontWeight: 600, color: "inherit" }}>{n.key === "approvals" && pendingCount > 0 ? pendingCount : ""}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{ position: "fixed", left: "50%", bottom: isMobile ? 76 : 30, transform: "translateX(-50%)", zIndex: 130, background: "#10b981", color: "#fff", padding: "12px 18px", borderRadius: 999, boxShadow: "0 18px 40px rgba(16,185,129,0.25)", fontSize: 13, fontWeight: 700, maxWidth: "min(92vw, 400px)", textAlign: "center" }}>
+          {toast}
         </div>
       )}
 
