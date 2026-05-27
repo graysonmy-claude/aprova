@@ -43,7 +43,7 @@ No markdown, no explanation, just the JSON object.`;
 
   for (const model of models) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       console.log(`[Gemini OCR] Trying model: ${model}`);
 
       const response = await fetch(url, {
